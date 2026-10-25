@@ -1,5 +1,5 @@
 // Offline-Cache: erst aus dem Speicher antworten, im Hintergrund aktualisieren.
-const CACHE = 'wie-lange-noch-v4';
+const CACHE = 'wie-lange-noch-v5';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
