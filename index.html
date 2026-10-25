@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Wie lange noch?</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Wie lange noch?">
+<meta name="theme-color" content="#9fd8ff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--ink:#1f2a44;--muted:#56658a;--bg:#eef8ff;--card:#fff;--accent:#2b7de9;--red:#e63946;--ok:#2fb36f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:ui-rounded,"SF Pro Rounded","Nunito",system-ui,-apple-system,sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overflow:hidden;touch-action:manipulation}
+input,select{-webkit-user-select:text;user-select:text;font:inherit}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#stage{display:block;width:100%;height:46vh;min-height:200px;border-bottom:4px solid var(--ink)}
+@media (orientation:portrait){#stage{height:32vh}}
+#info{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px 16px 70px;text-align:center}
+#remain{font-size:clamp(34px,7vw,76px);font-weight:800;letter-spacing:-.5px;line-height:1.05}
+#phrase{font-size:clamp(20px,3.4vw,36px);font-weight:700;color:var(--muted)}
+#next,#mnext{display:none;align-items:center;gap:12px;background:var(--card);border:3px solid var(--ink);border-radius:22px;
+  padding:8px 18px 8px 10px;font-size:clamp(17px,2.6vw,26px);font-weight:700;box-shadow:0 4px 0 var(--ink)}
+#next canvas,#mnext canvas{width:46px;height:46px;flex:none}
+#mnext{border-color:#6b45c9;box-shadow:0 4px 0 #6b45c9}
+#cards{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+#meta{font-size:15px;color:var(--muted)}
+#hint{font-size:15px;color:var(--muted);opacity:.85}
+.corner{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px}
+#pipBtn{left:calc(14px + env(safe-area-inset-left));border:3px solid var(--ink);background:var(--card);color:var(--ink);
+  border-radius:16px;padding:10px 14px;font:inherit;font-weight:700;font-size:15px;box-shadow:0 3px 0 var(--ink)}
+#gear{right:calc(14px + env(safe-area-inset-right));width:58px;height:58px;border-radius:50%;justify-content:center;
+  background:var(--card);border:3px solid var(--ink);opacity:.55}
+#gear svg{position:absolute;inset:-3px;width:58px;height:58px;transform:rotate(-90deg)}
+#gear circle{fill:none;stroke:var(--ok);stroke-width:6;stroke-dasharray:160;stroke-dashoffset:160}
+#gear.hold{opacity:1}
+#gear.hold circle{transition:stroke-dashoffset var(--hold,3s) linear;stroke-dashoffset:0}
+#pipVideo{position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none}
+
+/* Overlays */
+.overlay{position:fixed;inset:0;background:rgba(31,42,68,.45);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+.overlay.open{display:flex}
+.box{background:var(--card);border:3px solid var(--ink);border-radius:24px;box-shadow:0 6px 0 var(--ink);max-width:100%}
+#lockBox{padding:20px;width:340px;text-align:center}
+#lockQ{font-size:22px;font-weight:800;margin:4px 0 10px}
+#lockA{font-size:34px;font-weight:800;min-height:46px;border-bottom:3px solid var(--ink);margin:0 30px 14px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pad button{font:inherit;font-size:26px;font-weight:800;padding:12px 0;border-radius:16px;border:3px solid var(--ink);background:#f3f7ff;color:var(--ink)}
+.pad button.go{background:var(--ok);color:#fff}
+.shakeit{animation:shk .4s}
+@keyframes shk{0%,100%{transform:none}25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+
+#panel{align-items:stretch;justify-content:center;padding:0}
+#panelBox{width:min(760px,100%);height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;border-radius:0;border-width:0 3px;box-shadow:none;
+  padding:calc(12px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));background:var(--bg)}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:-12px;background:var(--bg);padding:8px 0;z-index:2}
+.ph h2{margin:0;font-size:26px}
+.sec{background:var(--card);border:3px solid var(--ink);border-radius:20px;padding:14px 16px;margin:12px 0}
+.sec h3{margin:0 0 10px;font-size:19px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}
+.lbl{font-weight:700;min-width:90px}
+.btn{font:inherit;font-weight:800;font-size:16px;border:3px solid var(--ink);border-radius:14px;padding:10px 14px;background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--ink)}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.warn{background:var(--red)}
+.btn.okb{background:var(--ok)}
+.btn.sm{font-size:14px;padding:6px 10px;border-radius:11px;box-shadow:0 2px 0 var(--ink)}
+.chip{font:inherit;font-weight:700;font-size:15px;border:2px solid var(--ink);border-radius:999px;padding:6px 12px;background:#fff;color:var(--ink)}
+.chip.on{background:var(--ink);color:#fff}
+.tin{font-size:18px;padding:8px 10px;border:2px solid var(--ink);border-radius:12px;background:#fff;color:var(--ink);min-width:0}
+.tin.num{width:90px}
+.tin.wide{flex:1;min-width:180px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.pick{font:inherit;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border:2px solid #c9d4e8;border-radius:16px;background:#fff;color:var(--ink);font-weight:700;font-size:13px}
+.pick.on{border:3px solid var(--ink);background:#fff6d6}
+.pick canvas{width:52px;height:52px}
+canvas.ic{width:34px;height:34px;flex:none}
+.item{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:2px dashed #dbe3f1}
+.item .t{flex:1;font-weight:700}
+.item.past{opacity:.5}
+.small{font-size:14px;color:var(--muted)}
+.code{font-size:34px;font-weight:800;letter-spacing:3px;font-family:ui-monospace,Menlo,monospace}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:middle;background:#aab}
+.dot.on{background:var(--ok)}.dot.off{background:#f0a03a}
+label.chk{display:flex;align-items:center;gap:8px;font-weight:700}
+label.chk input{width:24px;height:24px}
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="stage"></canvas>
+  <div id="info">
+    <div id="remain"></div>
+    <div id="phrase"></div>
+    <div id="cards">
+      <div id="next"><canvas id="nextIc" width="92" height="92"></canvas><span id="nextT"></span></div>
+      <div id="mnext"><canvas id="mnextIc" width="92" height="92"></canvas><span id="mnextT"></span></div>
+    </div>
+    <div id="meta"></div>
+    <div id="hint"></div>
+  </div>
+  <button id="pipBtn" class="corner" type="button">⧉ Schwebend</button>
+  <div id="gear" class="corner" aria-label="Elternbereich: 3 Sekunden gedrückt halten">
+    <svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="25.5"/></svg>
+    <span style="font-size:28px;line-height:1">⚙︎</span>
+  </div>
+</div>
+<video id="pipVideo" muted playsinline autoplay></video>
+
+<div id="lock" class="overlay">
+  <div id="lockBox" class="box">
+    <div class="small">Nur für Eltern</div>
+    <div id="lockQ"></div>
+    <div id="lockA"></div>
+    <div class="pad" id="pad"></div>
+    <button class="btn ghost" style="margin-top:14px;width:100%" data-lock="cancel">Abbrechen</button>
+  </div>
+</div>
+
+<div id="panel" class="overlay">
+  <div id="panelBox" class="box"></div>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
+const INK = '#1f2a44';
+
+/* ---------------- Ziele, Pausenarten ---------------- */
+const DESTS = [
+  {key:'oma',    name:'Oma und Opa',  phrase:'bei Oma und Opa'},
+  {key:'urlaub', name:'Urlaub',       phrase:'im Urlaub'},
+  {key:'see',    name:'Gardasee',     phrase:'am Gardasee'},
+  {key:'meer',   name:'Meer',         phrase:'am Meer'},
+  {key:'berge',  name:'Berge',        phrase:'in den Bergen'},
+  {key:'zelt',   name:'Campingplatz', phrase:'auf dem Campingplatz'},
+  {key:'hotel',  name:'Übernachtung', phrase:'im Hotel'},
+  {key:'haus',   name:'Zuhause',      phrase:'zu Hause'}
+];
+const PAUSES = {
+  essen:    {label:'Essen',    kid:'eine Essenspause', color:'#ff9f43'},
+  toilette: {label:'Toilette', kid:'eine Pipipause',   color:'#4aa3ff'},
+  spielen:  {label:'Spielen',  kid:'eine Spielpause',  color:'#3ecf8e'}
+};
+
+/* ---------------- Speicher ---------------- */
+function load(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function rid(n){
+  const a = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = '';
+  for (const x of crypto.getRandomValues(new Uint8Array(n))) s += a[x % a.length];
+  return s;
+}
+let state = load('wm-state', {updatedAt:0, trip:null});
+const device = Object.assign({id:rid(10), code:null, parent:false, ratio:3}, load('wm-device', {}));
+store('wm-device', device);
+function saveDevice(){ store('wm-device', device); }
+
+function commit(){
+  state.updatedAt = Date.now();
+  store('wm-state', state);
+  Sync.push();
+  onStateChange();
+}
+function onStateChange(){ updateInfo(); if (panelOpen) renderPanel(); }
+
+/* ---------------- Zeit-Helfer ---------------- */
+const pad2 = n => String(n).padStart(2, '0');
+function hm(ms){ const d = new Date(ms); return pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+function atDay(str, base){ const [h, m] = str.split(':').map(Number); const d = new Date(base); d.setHours(h, m, 0, 0); return d.getTime(); }
+function timeNear(str, ref = Date.now()){
+  if (!str) return ref;
+  let t = atDay(str, ref);
+  if (t - ref > 12 * HOUR) t -= DAY; else if (ref - t > 12 * HOUR) t += DAY;
+  return t;
+}
+function timeAfter(str, after){ let t = atDay(str, after); while (t <= after) t += DAY; return t; }
+function floorMin(t){ return Math.floor(t / MIN) * MIN; }
+function fmtShort(min){
+  min = Math.max(0, Math.round(min));
+  const h = Math.floor(min / 60), m = min % 60;
+  if (!h) return m + ' Min';
+  return h + ' Std' + (m ? ' ' + m + ' Min' : '');
+}
+const NUMW = ['null','ein','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn','elf','zwölf'];
+function sayDuration(min){
+  min = Math.max(1, Math.round(min));
+  if (min <= 1) return 'eine Minute';
+  if (min < 10) return min + ' Minuten';
+  if (min < 53){
+    const r = Math.round(min / 5) * 5;
+    if (r === 15) return 'eine Viertelstunde';
+    if (r === 30) return 'eine halbe Stunde';
+    if (r === 45) return 'eine Dreiviertelstunde';
+    return r + ' Minuten';
+  }
+  const q = Math.round(min / 15), h = Math.floor(q / 4), m = q % 4;
+  const hw = h === 1 ? 'eine Stunde' : h + ' Stunden';
+  if (m === 0) return hw;
+  if (m === 1) return hw + ' und eine Viertelstunde';
+  if (m === 2) return (h === 1 ? 'eineinhalb' : (NUMW[h] || h) + 'einhalb') + ' Stunden';
+  return hw + ' und eine Dreiviertelstunde';
+}
+
+/* ---------------- Reise-Logik ---------------- */
+function activePause(tr, now){ return tr.pauses.find(p => now >= p.at && now < p.at + p.dur * MIN); }
+function nextPause(tr, now){ return tr.pauses.filter(p => p.at > now).sort((a, b) => a.at - b.at)[0]; }
+function tripPhase(tr, now){ return now < tr.start ? 'before' : now >= tr.end ? 'arrived' : 'driving'; }
+const MEDIA_COLOR = '#9b6dff';
+function mediaOf(tr){ return tr.mediaOn ? (tr.media || []) : []; }
+function activeIn(arr, now){ return arr.find(x => now >= x.at && now < x.at + x.dur * MIN); }
+function nextIn(arr, now){ return arr.filter(x => x.at > now).sort((a, b) => a.at - b.at)[0]; }
+function halfTime(tr){ return tr.start + (Math.max(tr.end, tr.start + MIN) - tr.start) / 2; }
+
+/* ---------------- Zeichnen: Grundformen ---------------- */
+function rrPath(c, x, y, w, h, r){
+  r = Math.max(0, Math.min(r, w / 2, h / 2));
+  c.beginPath(); c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function fs(c, fill, lw){ c.fillStyle = fill; c.fill(); if (lw){ c.lineWidth = lw; c.strokeStyle = INK; c.stroke(); } }
+function poly(c, pts, u){ c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x * u, y * u) : c.moveTo(x * u, y * u)); c.closePath(); }
+function circ(c, x, y, r){ c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); }
+
+/* Rotes Wohnmobil, fährt nach rechts. x = linke Kante, y = Straßenkontakt, w = Breite */
+function drawCamper(c, x, y, w, t, mode){
+  const k = w / 120, lw = 3;
+  c.save(); c.translate(x, y); c.scale(k, k); c.lineJoin = 'round'; c.lineCap = 'round';
+  if (mode === 'shake') c.translate(Math.sin(t / 22) * 3, 0);
+  const moving = mode === 'drive';
+  // Schatten
+  c.beginPath(); c.ellipse(62, 1, 58, 4, 0, 0, Math.PI * 2); c.fillStyle = 'rgba(0,0,0,.14)'; c.fill();
+  // Auspuffwölkchen
+  if (moving){
+    const p = (t % 1800) / 1800;
+    c.globalAlpha = (1 - p) * 0.55; circ(c, -2 - p * 16, -14 - p * 7, 3 + p * 5); c.fillStyle = '#d3dbe6'; c.fill(); c.globalAlpha = 1;
+  }
+  c.save();
+  // Aufbau sitzt etwas tiefer auf den Rädern
+  c.translate(0, 4 + (moving ? Math.sin(t / 170) * 0.9 : 0));
+  // Dachluke
+  rrPath(c, 20, -71, 18, 6, 2); fs(c, '#dfe5ee', 2.5);
+  // Wohnkabine
+  rrPath(c, 2, -66, 86, 48, 9); fs(c, '#e63946', lw);
+  // Fahrerhaus
+  c.beginPath(); c.moveTo(84, -18); c.lineTo(84, -48); c.lineTo(102, -48); c.lineTo(116, -32);
+  c.quadraticCurveTo(119, -30, 119, -26); c.lineTo(119, -21); c.quadraticCurveTo(119, -18, 116, -18); c.closePath();
+  fs(c, '#e63946', lw);
+  // Alkoven
+  rrPath(c, 70, -66, 37, 18, 8); fs(c, '#e63946', lw);
+  // Zierstreifen
+  c.fillStyle = '#fff4e0'; c.fillRect(4.5, -33, 79, 5); c.fillRect(86, -33, 31, 5);
+  // Fenster
+  rrPath(c, 10, -57, 27, 15, 4); fs(c, '#bfe3ff', 2.5);
+  c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(14, -46); c.lineTo(22, -54); c.stroke();
+  rrPath(c, 80, -62, 19, 8, 3); fs(c, '#bfe3ff', 2.5);
+  c.beginPath(); c.moveTo(88, -44); c.lineTo(101, -44); c.lineTo(111, -34); c.lineTo(88, -34); c.closePath(); fs(c, '#bfe3ff', 2.5);
+  // Tür
+  rrPath(c, 45, -55, 16, 35, 3); fs(c, '#c98a5a', 2.5);
+  circ(c, 57, -37, 1.6); c.fillStyle = INK; c.fill();
+  // Licht + Stoßstange
+  circ(c, 116.5, -23.5, 2.4); c.fillStyle = '#ffd166'; c.fill();
+  rrPath(c, 108, -20, 13, 4, 2); fs(c, '#cfd6e2', 2);
+  c.restore();
+  // Räder
+  const rot = moving ? t / 260 : 0;
+  for (const wx of [25, 95]){
+    circ(c, wx, -10, 10); fs(c, '#2c3550', lw);
+    c.save(); c.translate(wx, -10); c.rotate(rot); c.strokeStyle = '#8e9ab0'; c.lineWidth = 1.8;
+    for (let i = 0; i < 4; i++){ c.rotate(Math.PI / 2); c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -7.5); c.stroke(); }
+    c.restore();
+    circ(c, wx, -10, 4); fs(c, '#d5dde8');
+  }
+  c.restore();
+}
+
+/* ---------------- Zeichnen: Cartoon-Symbole ---------------- */
+const ICON_BG = {oma:'#d9f1ff', urlaub:'#bfe6ff', see:'#d9f1ff', meer:'#d9f1ff', berge:'#d9f1ff', zelt:'#d9f1ff',
+  hotel:'#33407a', haus:'#d9f1ff', essen:'#ffe1c2', toilette:'#d6ebff', spielen:'#d6f7e7', tablet:'#eadcff'};
+function sun(c, x, y, r){ circ(c, x, y, r); fs(c, '#ffd166', r * 0.3); }
+function grass(c, u, y){ c.fillStyle = '#8fd16a'; c.fillRect(-11 * u, y * u, 22 * u, 12 * u); c.beginPath(); c.moveTo(-11 * u, y * u); c.lineTo(11 * u, y * u); c.lineWidth = u * 0.8; c.strokeStyle = INK; c.stroke(); }
+function heart(c, x, y, s){
+  c.beginPath(); c.moveTo(x, y + s * 0.9);
+  c.bezierCurveTo(x - s * 1.7, y - s * 0.2, x - s * 0.6, y - s * 1.4, x, y - s * 0.4);
+  c.bezierCurveTo(x + s * 0.6, y - s * 1.4, x + s * 1.7, y - s * 0.2, x, y + s * 0.9);
+  fs(c, '#ff4d6d', s * 0.3);
+}
+function house(c, u, lw, roof, wall){
+  poly(c, [[-5, 6], [-5, 0], [5, 0], [5, 6]], u); fs(c, wall, lw);
+  poly(c, [[-6.6, 0.4], [0, -6], [6.6, 0.4]], u); fs(c, roof, lw);
+  rrPath(c, -1.4 * u, 2 * u, 2.8 * u, 4 * u, 0.6 * u); fs(c, '#c98a5a', lw * 0.8);
+  rrPath(c, 2.2 * u, 1.6 * u, 2 * u, 2 * u, 0.4 * u); fs(c, '#bfe3ff', lw * 0.7);
+}
+function mountains(c, u, lw, col){
+  poly(c, [[-12, 4], [-4, -5], [2, 2], [5, -1.5], [12, 4]], u); fs(c, col, lw);
+  poly(c, [[-5.6, -3.2], [-4, -5], [-2.4, -3.2], [-3.3, -2.5], [-4, -3.1], [-4.8, -2.5]], u); fs(c, '#fff', lw * 0.6);
+}
+const ICONS = {
+  oma(c, u, lw){ sun(c, -5.5 * u, -5 * u, 2.2 * u); grass(c, u, 5.5); house(c, u, lw, '#e63946', '#ffd27a'); heart(c, 5.2 * u, -5.4 * u, 2.1 * u); },
+  haus(c, u, lw){ sun(c, 5.5 * u, -5.5 * u, 2.2 * u); grass(c, u, 5.5); house(c, u, lw, '#4a7bd0', '#fff1d6'); },
+  urlaub(c, u, lw){
+    sun(c, 4.5 * u, -4.5 * u, 2.8 * u);
+    c.fillStyle = '#4aa3ff'; c.fillRect(-11 * u, 3 * u, 22 * u, 10 * u);
+    c.beginPath(); c.ellipse(-2 * u, 9 * u, 9 * u, 4.5 * u, 0, 0, Math.PI * 2); fs(c, '#ffe08a', lw);
+    c.beginPath(); c.moveTo(-3 * u, 6 * u); c.quadraticCurveTo(-4.5 * u, 0, -1.2 * u, -4.5 * u);
+    c.lineWidth = 1.6 * u; c.strokeStyle = INK; c.stroke(); c.lineWidth = 0.9 * u; c.strokeStyle = '#b07a4a'; c.stroke();
+    for (const a of [-2.6, -1.9, -0.9, -0.2]){
+      c.save(); c.translate(-1.2 * u, -4.5 * u); c.rotate(a);
+      c.beginPath(); c.ellipse(3.2 * u, 0, 3.4 * u, 1.2 * u, 0, 0, Math.PI * 2); fs(c, '#57c06b', lw * 0.7); c.restore();
+    }
+  },
+  see(c, u, lw){
+    sun(c, 5.5 * u, -5.5 * u, 2.2 * u); mountains(c, u, lw, '#7fb069');
+    c.fillStyle = '#4aa3ff'; c.fillRect(-11 * u, 4 * u, 22 * u, 8 * u);
+    c.beginPath(); c.moveTo(-11 * u, 4 * u); c.lineTo(11 * u, 4 * u); c.lineWidth = lw; c.strokeStyle = INK; c.stroke();
+    c.strokeStyle = '#fff'; c.lineWidth = u * 0.7; c.beginPath(); c.moveTo(-5 * u, 7 * u); c.lineTo(-1 * u, 7 * u); c.moveTo(2 * u, 9 * u); c.lineTo(5 * u, 9 * u); c.stroke();
+  },
+  meer(c, u, lw){
+    sun(c, -4.5 * u, -4 * u, 3 * u);
+    c.fillStyle = '#3a8ee6'; c.fillRect(-11 * u, 2 * u, 22 * u, 10 * u);
+    c.beginPath(); c.moveTo(-11 * u, 2 * u);
+    for (let x = -11; x <= 11; x += 2) c.quadraticCurveTo((x + 1) * u, 0.8 * u, (x + 2) * u, 2 * u);
+    c.lineWidth = lw; c.strokeStyle = INK; c.stroke();
+    poly(c, [[1, 1.5], [8, 1.5], [6.6, 3.6], [2.4, 3.6]], u); fs(c, '#e63946', lw * 0.8);
+    poly(c, [[4.3, 1], [4.3, -6], [8, 1]], u); fs(c, '#fff', lw * 0.8);
+    c.strokeStyle = '#fff'; c.lineWidth = u * 0.7; c.beginPath(); c.moveTo(-7 * u, 6 * u); c.lineTo(-3 * u, 6 * u); c.moveTo(0, 8.5 * u); c.lineTo(4 * u, 8.5 * u); c.stroke();
+  },
+  berge(c, u, lw){
+    sun(c, -6 * u, -5.5 * u, 2 * u);
+    poly(c, [[-12, 7], [-3, -6], [6, 7]], u); fs(c, '#9aa8bd', lw);
+    poly(c, [[-5, -3], [-3, -6], [-1, -3], [-2, -2.2], [-3, -3], [-4, -2.2]], u); fs(c, '#fff', lw * 0.6);
+    poly(c, [[0, 7], [6, -2], [12, 7]], u); fs(c, '#7b8aa3', lw);
+    grass(c, u, 6.5);
+  },
+  zelt(c, u, lw){
+    sun(c, 5.5 * u, -5.5 * u, 2.2 * u); grass(c, u, 5);
+    poly(c, [[-7, 5], [0, -5], [7, 5]], u); fs(c, '#ff9f43', lw);
+    poly(c, [[-1.6, 5], [0, 0.5], [1.6, 5]], u); fs(c, INK);
+    c.beginPath(); c.moveTo(0, -5 * u); c.lineTo(0, -8 * u); c.lineWidth = lw * 0.8; c.strokeStyle = INK; c.stroke();
+    poly(c, [[0, -8], [3, -7], [0, -6]], u); fs(c, '#e63946');
+  },
+  hotel(c, u, lw){
+    circ(c, -4.5 * u, -5 * u, 2.6 * u); fs(c, '#ffe08a');
+    circ(c, -3.4 * u, -5.8 * u, 2.3 * u); fs(c, ICON_BG.hotel);
+    c.fillStyle = '#ffe08a'; for (const [sx, sy] of [[3, -7], [6.5, -4], [1, -3.5]]){ circ(c, sx * u, sy * u, 0.6 * u); c.fill(); }
+    rrPath(c, -4 * u, -1 * u, 9 * u, 13 * u, 0.8 * u); fs(c, '#ffb4a2', lw);
+    c.fillStyle = '#ffe08a';
+    for (let r = 0; r < 3; r++) for (let q = 0; q < 2; q++){ rrPath(c, (-2.6 + q * 4) * u, (1 + r * 3) * u, 2.2 * u, 1.8 * u, 0.3 * u); fs(c, '#ffe08a', lw * 0.5); }
+  },
+  essen(c, u, lw){
+    circ(c, 0, 0.5 * u, 5.8 * u); fs(c, '#fff', lw); circ(c, 0, 0.5 * u, 3.8 * u); fs(c, '#fff', lw * 0.5);
+    c.lineWidth = 1.1 * u; c.strokeStyle = INK;
+    c.beginPath(); c.moveTo(-8 * u, -6 * u); c.lineTo(-8 * u, 7 * u);
+    c.moveTo(-9.2 * u, -6 * u); c.lineTo(-9.2 * u, -2.5 * u); c.moveTo(-6.8 * u, -6 * u); c.lineTo(-6.8 * u, -2.5 * u);
+    c.moveTo(-9.2 * u, -2.5 * u); c.quadraticCurveTo(-8 * u, -1 * u, -6.8 * u, -2.5 * u); c.stroke();
+    c.beginPath(); c.moveTo(8 * u, 7 * u); c.lineTo(8 * u, -6 * u); c.quadraticCurveTo(10 * u, -3 * u, 8 * u, 0); c.stroke();
+  },
+  toilette(c, u, lw){
+    c.font = `900 ${8.5 * u}px ui-rounded, system-ui, sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.lineWidth = lw * 1.4; c.strokeStyle = INK; c.strokeText('WC', 0, 0.8 * u); c.fillStyle = '#2b7de9'; c.fillText('WC', 0, 0.8 * u);
+  },
+  spielen(c, u, lw){
+    grass(c, u, 6);
+    c.beginPath(); c.moveTo(-7.5 * u, 6 * u); c.lineTo(-5 * u, -6 * u); c.lineTo(5 * u, -6 * u); c.lineTo(7.5 * u, 6 * u);
+    c.lineWidth = lw * 1.2; c.strokeStyle = '#e63946'; c.stroke();
+    c.lineWidth = lw * 0.6; c.strokeStyle = INK;
+    c.beginPath(); c.moveTo(-1.8 * u, -6 * u); c.lineTo(-1.8 * u, 2 * u); c.moveTo(1.8 * u, -6 * u); c.lineTo(1.8 * u, 2 * u); c.stroke();
+    rrPath(c, -3 * u, 1.8 * u, 6 * u, 1.6 * u, 0.5 * u); fs(c, '#ffd166', lw * 0.6);
+  }
+};
+ICONS.tablet = (c, u, lw) => {
+  rrPath(c, -6 * u, -7.5 * u, 12 * u, 15 * u, 1.8 * u); fs(c, '#3b3f5c', lw);
+  rrPath(c, -4.6 * u, -6 * u, 9.2 * u, 10.6 * u, 0.8 * u); fs(c, '#bfe3ff');
+  poly(c, [[-1.4, -3.2], [2.4, -0.7], [-1.4, 1.8]], u); fs(c, '#e63946');
+  circ(c, 0, 5.9 * u, 0.7 * u); c.fillStyle = '#dfe5ee'; c.fill();
+};
+function drawIcon(c, key, cx, cy, r){
+  const u = r / 10, lw = Math.max(1.2, u * 0.8);
+  c.save(); c.lineJoin = 'round'; c.lineCap = 'round';
+  circ(c, cx, cy, r); c.fillStyle = ICON_BG[key] || '#eaf6ff'; c.fill();
+  c.save(); circ(c, cx, cy, r); c.clip(); c.translate(cx, cy);
+  (ICONS[key] || ICONS.haus)(c, u, lw);
+  c.restore();
+  circ(c, cx, cy, r); c.lineWidth = lw * 1.4; c.strokeStyle = INK; c.stroke();
+  c.restore();
+}
+function drawTree(c, x, y, s){
+  c.lineWidth = 2 * s; c.strokeStyle = INK;
+  c.lineWidth = 3 * s; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 18 * s); c.stroke();
+  circ(c, x, y - 28 * s, 13 * s); fs(c, "#c7d96a", 2.5 * s);
+  circ(c, x - 4 * s, y - 32 * s, 3.5 * s); c.fillStyle = '#dde88f'; c.fill();
+}
+function drawCloud(c, x, y, s){
+  c.fillStyle = 'rgba(255,255,255,.95)';
+  for (const [dx, dy, r] of [[0, 0, 13], [15, -8, 16], [32, 0, 12]]){ circ(c, x + dx * s, y + dy * s, r * s); c.fill(); }
+  rrPath(c, x - 5 * s, y - 2 * s, 46 * s, 14 * s, 7 * s); c.fill();
+}
+function pill(c, x, y, text, size, bg, fg, left){
+  c.font = `800 ${size}px ui-rounded, system-ui, sans-serif`;
+  const w = c.measureText(text).width + size * 1.1, h = size * 1.6;
+  if (left) x += w / 2;
+  rrPath(c, x - w / 2, y - h / 2, w, h, h / 2); fs(c, bg, Math.max(1.5, size * 0.12));
+  c.fillStyle = fg; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, x, y + size * 0.05);
+}
+
+/* ---------------- Szene ---------------- */
+const fx = {shakeUntil:0, bubble:'', bubbleUntil:0, speaking:false};
+// Gemeinsame Uhr für die Mittellinie (Hauptbild und schwebendes Fenster), läuft nur beim Fahren
+let dashT = 0, dashLast = 0;
+function roadClock(now, moving){
+  if (dashLast && moving) dashT += Math.min(now - dashLast, 1000);
+  dashLast = now;
+  return dashT;
+}
+function drawScene(c, W, H, now, opt = {}){
+  const tr = state.trip;
+  const s = Math.min(H / 300, W / 860);
+  const roadY = H * 0.64, rt = 26 * s;
+  const xs = 82 * s, xe = W - 112 * s;
+  c.save(); c.lineJoin = 'round'; c.lineCap = 'round';
+
+  // Himmel, Wolken, Hügel
+  const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#9fd8ff'); g.addColorStop(1, '#e8f7ff');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 5; i++){
+    const span = W + 140 * s;
+    const x = ((i * span / 5 + now / 1000 * (5 + i * 1.5) * s) % span) - 70 * s;
+    drawCloud(c, x, (28 + (i % 3) * 22) * s, (0.65 + (i % 2) * 0.3) * s);
+  }
+  c.fillStyle = '#c8eaa6'; c.beginPath(); c.moveTo(0, H);
+  for (let x = 0; x <= W + 10; x += W / 48) c.lineTo(x, roadY - 36 * s + Math.sin(x / (150 * s) + 1) * 11 * s);
+  c.lineTo(W, H); c.closePath(); c.fill();
+  c.fillStyle = '#a6dc80'; c.fillRect(0, roadY, W, H - roadY);
+
+  // Straße
+  c.beginPath(); c.moveTo(34 * s, roadY); c.lineTo(W - 52 * s, roadY);
+  c.lineWidth = rt + 6 * s; c.strokeStyle = INK; c.stroke();
+  c.lineWidth = rt; c.strokeStyle = '#66728a'; c.stroke();
+
+  if (!tr){
+    drawIcon(c, 'haus', 40 * s, roadY - 6 * s, 26 * s);
+    drawCamper(c, xs - 10 * s, roadY + 5 * s, 100 * s, now, 'park');
+    if (opt.pip) pill(c, W / 2, 40 * s, 'Noch keine Reise geplant', 22 * s, '#fff', INK);
+    c.restore(); return null;
+  }
+
+  const S = tr.start, E = Math.max(tr.end, tr.start + MIN);
+  const X = t => xs + Math.max(0, Math.min(1, (t - S) / (E - S))) * (xe - xs);
+  const phase = tripPhase(tr, now);
+  const px = X(now);
+  const pa = activePause(tr, now), am = activeIn(mediaOf(tr), now);
+  const dash = roadClock(now, phase === 'driving' && !pa);
+
+  // Gefahrene Strecke
+  if (px > xs){
+    c.beginPath(); c.moveTo(34 * s, roadY); c.lineTo(px, roadY); c.lineWidth = rt; c.strokeStyle = '#ffc93c'; c.stroke();
+  }
+  // Mittellinie, wandert beim Fahren Richtung Ziel, steht in Pausen still
+  c.setLineDash([14 * s, 12 * s]); c.lineDashOffset = -(dash / 1000) * 22 * s; c.lineWidth = 3.5 * s; c.lineCap = 'butt';
+  c.beginPath(); c.moveTo(Math.max(px, 40 * s), roadY); c.lineTo(W - 58 * s, roadY); c.strokeStyle = 'rgba(255,255,255,.9)'; c.stroke();
+  if (px > 40 * s){ c.beginPath(); c.moveTo(40 * s, roadY); c.lineTo(px, roadY); c.strokeStyle = 'rgba(190,120,0,.55)'; c.stroke(); }
+  c.setLineDash([]); c.lineCap = 'round';
+
+  // Ein Bäumchen pro Stunde
+  for (let h = 1; S + h * HOUR < E; h++){
+    const tx = X(S + h * HOUR);
+    if (Math.abs(tx - X(halfTime(tr))) < 40 * s) continue;
+    c.globalAlpha = tx < px ? 0.45 : 1;
+    drawTree(c, tx, roadY + rt / 2 + 34 * s, s);
+    c.globalAlpha = 1;
+  }
+
+  // Start + Ziel
+  drawIcon(c, 'haus', 40 * s, roadY - 6 * s, 24 * s);
+  const dcx = W - 56 * s, dcy = roadY - 28 * s, dr = 44 * s;
+  if (phase === 'arrived'){ c.save(); c.globalAlpha = 0.35 + 0.25 * Math.sin(now / 300); circ(c, dcx, dcy, dr + 10 * s); c.fillStyle = '#fff3a0'; c.fill(); c.restore(); }
+  drawIcon(c, tr.dest.key, dcx, dcy, dr);
+  pill(c, dcx, roadY + 34 * s, tr.dest.name, 14 * s, '#fff', INK);
+
+  // Pausen
+  for (const p of tr.pauses){
+    const x0 = X(p.at), x1 = X(p.at + p.dur * MIN), info = PAUSES[p.type] || PAUSES.essen;
+    const past = now >= p.at + p.dur * MIN;
+    c.globalAlpha = past ? 0.45 : 1;
+    rrPath(c, x0, roadY - rt / 2 - 3 * s, Math.max(x1 - x0, 10 * s), rt + 6 * s, 7 * s); fs(c, info.color, 2.5 * s);
+    const mx = (x0 + Math.max(x1, x0 + 10 * s)) / 2, sy = roadY - 60 * s;
+    c.beginPath(); c.moveTo(mx, roadY - rt / 2 - 3 * s); c.lineTo(mx, sy); c.lineWidth = 3 * s; c.strokeStyle = INK; c.stroke();
+    drawIcon(c, p.type, mx, sy, 17 * s);
+    c.font = `700 ${11 * s}px ui-rounded, system-ui, sans-serif`; c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.fillText(hm(p.at), mx, sy - 21 * s);
+    c.globalAlpha = 1;
+  }
+  // Medienzeit (optional): lila Band über der Straße mit Tablet-Schild
+  for (const m of mediaOf(tr)){
+    const x0 = X(m.at), x1 = Math.max(X(m.at + m.dur * MIN), x0 + 10 * s), past = now >= m.at + m.dur * MIN;
+    const by = roadY - rt / 2 - 14 * s, mx = (x0 + x1) / 2, sy = roadY - 60 * s;
+    c.globalAlpha = past ? 0.45 : 1;
+    rrPath(c, x0, by, x1 - x0, 8 * s, 4 * s); fs(c, MEDIA_COLOR, 2 * s);
+    c.beginPath(); c.moveTo(mx, by); c.lineTo(mx, sy); c.lineWidth = 3 * s; c.strokeStyle = INK; c.stroke();
+    drawIcon(c, 'tablet', mx, sy, 17 * s);
+    c.font = `700 ${11 * s}px ui-rounded, system-ui, sans-serif`; c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.fillText(hm(m.at), mx, sy - 21 * s);
+    c.globalAlpha = 1;
+  }
+
+  // Halbzeit-Fähnchen
+  const half = halfTime(tr), hx = X(half), halfDone = now >= half;
+  rrPath(c, hx - 3 * s, roadY - rt / 2, 6 * s, rt, 2 * s); fs(c, '#fff', 1.5 * s);
+  const fb = roadY + rt / 2 + 50 * s, ft = roadY + rt / 2 + 6 * s, wave = Math.sin(now / 400) * 2 * s;
+  c.beginPath(); c.moveTo(hx, fb); c.lineTo(hx, ft); c.lineWidth = 3 * s; c.strokeStyle = INK; c.stroke();
+  c.beginPath(); c.moveTo(hx, ft); c.lineTo(hx + 30 * s, ft + wave); c.lineTo(hx + 30 * s, ft + 20 * s + wave); c.lineTo(hx, ft + 20 * s); c.closePath();
+  fs(c, halfDone ? '#ffd166' : '#fff', 2.5 * s);
+  c.font = `900 ${14 * s}px ui-rounded, system-ui, sans-serif`; c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('½', hx + 15 * s, ft + 10.5 * s + wave / 2);
+  if (halfDone && now - half < 3 * MIN){
+    c.fillStyle = '#ffb703';
+    for (let i = 0; i < 6; i++){
+      const a = i / 6 * Math.PI * 2 + now / 700, r = (22 + Math.sin(now / 200 + i) * 4) * s;
+      circ(c, hx + 15 * s + Math.cos(a) * r, ft + 10 * s + Math.sin(a) * r, 2.5 * s); c.fill();
+    }
+  }
+
+  // Zwischenziele
+  for (const st of tr.stops){
+    const x = X(st.at), sy = roadY - 100 * s, past = now >= st.at;
+    c.globalAlpha = past ? 0.5 : 1;
+    c.beginPath(); c.moveTo(x, roadY - rt / 2); c.lineTo(x, sy); c.lineWidth = 2.5 * s; c.strokeStyle = INK; c.setLineDash([4 * s, 4 * s]); c.stroke(); c.setLineDash([]);
+    drawIcon(c, st.icon, x, sy, 16 * s);
+    pill(c, x, sy - 27 * s, st.name, 11 * s, '#fff', INK);
+    c.globalAlpha = 1;
+  }
+
+  // Wohnmobil
+  const cw = 100 * s, cx = Math.min(Math.max(px - cw * 0.55, 8 * s), W - cw - 8 * s), cy = roadY + 5 * s;
+  let mode =phase === 'driving' && !pa ? 'drive' : 'park';
+  if (now < fx.shakeUntil) mode = 'shake';
+  drawCamper(c, cx, cy, cw, now, mode);
+  const box = {x:cx, y:cy - 76 * s, w:cw, h:80 * s};
+
+  // Blasen über dem Wohnmobil
+  const bx = cx + cw * 0.5, by = cy - 92 * s;
+  if (fx.speaking){
+    rrPath(c, bx - 26 * s, by - 14 * s, 52 * s, 28 * s, 14 * s); fs(c, '#fff', 2.5 * s);
+    for (let i = 0; i < 3; i++){ circ(c, bx + (i - 1) * 12 * s, by - Math.max(0, Math.sin(now / 160 - i)) * 4 * s, 3.6 * s); c.fillStyle = INK; c.fill(); }
+  } else if (now < fx.bubbleUntil){
+    pill(c, bx, by, fx.bubble, 16 * s, '#fff', INK);
+  } else if (pa){
+    drawIcon(c, pa.type, bx, by + 2 * s, 15 * s);
+  } else if (am){
+    drawIcon(c, 'tablet', bx, by + 2 * s, 15 * s);
+  }
+
+  // Konfetti bei Ankunft
+  if (phase === 'arrived' && now - tr.end < 30 * MIN){
+    const cols = ['#e63946', '#ffd166', '#4aa3ff', '#3ecf8e', '#ff9f43'];
+    for (let i = 0; i < 36; i++){
+      const x = (i * 97.3 * s + Math.sin(now / 900 + i) * 14 * s) % W, y = ((now / 14 + i * 61) * s) % (roadY);
+      c.fillStyle = cols[i % 5]; c.fillRect(x, y, 6 * s, 9 * s);
+    }
+  }
+
+  // Mini-Anzeige im schwebenden Fenster
+  if (opt.pip){
+    let txt;
+    if (phase === 'before') txt = 'Gleich geht’s los!';
+    else if (phase === 'arrived') txt = 'Wir sind da!';
+    else txt = 'noch ' + fmtShort(Math.ceil((tr.end - now) / MIN));
+    pill(c, 14 * s, 30 * s, txt, 24 * s, "#fff", INK, true);
+    if (pa) pill(c, W / 2 + 60 * s, 30 * s, 'Pause', 18 * s, PAUSES[pa.type].color, '#fff');
+  }
+  c.restore();
+  return box;
+}
+
+/* ---------------- Hauptanzeige ---------------- */
+const stage = $('#stage'), sctx = stage.getContext('2d');
+let carBox = null;
+function sizeStage(){
+  const r = stage.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2);
+  stage.width = Math.max(1, Math.round(r.width * d)); stage.height = Math.max(1, Math.round(r.height * d));
+}
+new ResizeObserver(sizeStage).observe(stage);
+sizeStage();
+let lastFrame = 0, lastInfo = 0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  if (ts - lastFrame < 33) return;
+  lastFrame = ts;
+  const now = Date.now();
+  carBox = drawScene(sctx, stage.width, stage.height, now);
+  if (now - lastInfo > 1000){ lastInfo = now; updateInfo(); checkHalf(); }
+}
+
+function updateInfo(){
+  const tr = state.trip, now = Date.now();
+  const R = $('#remain'), P = $('#phrase'), N = $('#next'), M = $('#meta'), Hn = $('#hint');
+  if (!tr){
+    R.textContent = 'Noch keine Reise geplant';
+    P.textContent = 'Eltern: Zahnrad unten rechts 3 Sekunden gedrückt halten';
+    N.style.display = 'none'; $('#mnext').style.display = 'none'; M.textContent = ''; Hn.textContent = '';
+    return;
+  }
+  const phase = tripPhase(tr, now), left = Math.ceil((tr.end - now) / MIN);
+  if (phase === 'before'){ R.textContent = 'Gleich geht’s los!'; P.textContent = 'Die Fahrt dauert ungefähr ' + fmtShort((tr.end - tr.start) / MIN); }
+  else if (phase === 'arrived'){ R.textContent = 'Wir sind da! 🎉'; P.textContent = 'Juhu, wir sind ' + tr.dest.phrase + '!'; }
+  else { R.textContent = 'Noch ' + fmtShort(left); P.textContent = 'dann sind wir ' + tr.dest.phrase + '!'; }
+  const pa = activePause(tr, now), np = nextPause(tr, now);
+  const show = pa || (np && phase !== 'arrived') ? (pa || np) : null;
+  if (show){
+    const info = PAUSES[show.type] || PAUSES.essen;
+    $('#nextT').textContent = pa
+      ? `Jetzt Pause: ${info.label} · noch ${fmtShort(Math.ceil((pa.at + pa.dur * MIN - now) / MIN))}`
+      : `Nächste Pause: ${info.label} · in ${fmtShort(Math.ceil((np.at - now) / MIN))}`;
+    const ic = $('#nextIc'), ctx = ic.getContext('2d'); ctx.clearRect(0, 0, 92, 92); drawIcon(ctx, show.type, 46, 46, 42);
+    N.style.display = 'flex';
+  } else N.style.display = 'none';
+  const MN = $('#mnext'), am = activeIn(mediaOf(tr), now), nm = nextIn(mediaOf(tr), now);
+  if (am || (nm && phase !== 'arrived')){
+    $('#mnextT').textContent = am
+      ? `Jetzt Medienzeit! · noch ${fmtShort(Math.ceil((am.at + am.dur * MIN - now) / MIN))}`
+      : `Medienzeit · in ${fmtShort(Math.ceil((nm.at - now) / MIN))}`;
+    const mc = $('#mnextIc').getContext('2d'); mc.clearRect(0, 0, 92, 92); drawIcon(mc, 'tablet', 46, 46, 42);
+    MN.style.display = 'flex';
+  } else MN.style.display = 'none';
+  M.textContent = `Start ${hm(tr.start)} · Ankunft ca. ${hm(tr.end)}`;
+  Hn.textContent = phase === 'arrived' ? '' : '👆 Tipp aufs Wohnmobil!';
+}
+
+/* ---------------- Vorlesen ---------------- */
+let taps = [], lockUntil = 0, voice = null;
+function pickVoice(){
+  const vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  const de = vs.filter(v => /^de/i.test(v.lang));
+  voice = de.find(v => /anna|petra|helena|marlene/i.test(v.name)) || de.find(v => v.localService) || de[0] || null;
+}
+if (window.speechSynthesis){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+
+function speechText(){
+  const tr = state.trip, now = Date.now();
+  if (!tr) return 'Wir haben noch keine Reise geplant.';
+  const phase = tripPhase(tr, now);
+  if (phase === 'before') return `Gleich geht es los! Die Fahrt dauert ungefähr ${sayDuration((tr.end - tr.start) / MIN)}.`;
+  if (phase === 'arrived') return `Juhu, wir sind ${tr.dest.phrase}!`;
+  const left = (tr.end - now) / MIN;
+  let t = '';
+  const pa = activePause(tr, now);
+  if (pa) t += 'Wir machen gerade Pause. ';
+  t += left < 1.5 ? `Gleich sind wir ${tr.dest.phrase}!` : `Noch ungefähr ${sayDuration(left)}, dann sind wir ${tr.dest.phrase}!`;
+  const half = halfTime(tr);
+  if (now < half && half - now > 2 * MIN) t += ` Bis zur Hälfte sind es noch ungefähr ${sayDuration((half - now) / MIN)}.`;
+  else if (now >= half && now - half < 30 * MIN) t += ' Die Hälfte haben wir schon geschafft!';
+  const np = nextPause(tr, now);
+  if (!pa && np && np.at < tr.end && np.at - now < 3 * HOUR){
+    t += ` In ungefähr ${sayDuration((np.at - now) / MIN)} machen wir ${(PAUSES[np.type] || PAUSES.essen).kid}.`;
+  }
+  const am = activeIn(mediaOf(tr), now), nm = nextIn(mediaOf(tr), now);
+  if (am) t += ` Gerade ist Medienzeit, noch ungefähr ${sayDuration((am.at + am.dur * MIN - now) / MIN)}.`;
+  else if (nm && nm.at < tr.end && nm.at - now < 3 * HOUR) t += ` In ungefähr ${sayDuration((nm.at - now) / MIN)} beginnt die Medienzeit.`;
+  return t;
+}
+function speak(text){
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'de-DE'; if (voice) u.voice = voice; u.rate = 0.95; u.pitch = 1.1;
+  fx.speaking = true;
+  const done = () => { fx.speaking = false; };
+  u.onend = done; u.onerror = done;
+  setTimeout(done, 15000);
+  speechSynthesis.speak(u);
+}
+// Halbzeit einmal pro Reise automatisch ansagen (nicht auf Eltern-Geräten)
+function checkHalf(){
+  const tr = state.trip; if (!tr || device.parent) return;
+  const now = Date.now(), half = halfTime(tr);
+  if (now < half || now - half > 10 * MIN || now >= tr.end || load('wm-half', '') === tr.id) return;
+  store('wm-half', tr.id);
+  fx.bubble = 'Halbzeit!'; fx.bubbleUntil = now + 10000;
+  speak(`Juhu! Die Hälfte der Strecke haben wir schon geschafft! Jetzt noch ungefähr ${sayDuration((tr.end - now) / MIN)}, dann sind wir ${tr.dest.phrase}.`);
+}
+// iOS spricht nur nach einer ersten Berührung – dabei die Sprachausgabe freischalten
+document.addEventListener('pointerdown', () => {
+  if (!window.speechSynthesis) return;
+  const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u);
+}, {once:true, capture:true});
+
+function onCarTap(){
+  const now = Date.now();
+  if (fx.speaking) return;
+  if (now < lockUntil){ fx.shakeUntil = now + 500; fx.bubble = 'zZz…'; fx.bubbleUntil = now + 1800; return; }
+  taps = taps.filter(t => now - t < 2 * MIN);
+  if (taps.length >= 2){
+    // Dritter Tipp kurz hintereinander: zwei Minuten Ruhe
+    lockUntil = now + 2 * MIN; taps = [];
+    fx.shakeUntil = now + 500; fx.bubble = 'zZz…'; fx.bubbleUntil = now + 1800;
+    return;
+  }
+  taps.push(now);
+  speak(speechText());
+}
+stage.addEventListener('pointerdown', e => {
+  if (!carBox) return;
+  const r = stage.getBoundingClientRect(), k = stage.width / r.width;
+  const x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k, padX = carBox.w * 0.25, padY = carBox.h * 0.3;
+  if (x > carBox.x - padX && x < carBox.x + carBox.w + padX && y > carBox.y - padY && y < carBox.y + carBox.h + padY) onCarTap();
+});
+
+/* ---------------- Elternsperre ---------------- */
+const gear = $('#gear');
+let holdTimer = null, mathAnswer = 0, mathInput = '';
+function holdStart(e){
+  e.preventDefault();
+  const ms = device.parent ? 1000 : 3000;
+  gear.style.setProperty('--hold', ms + 'ms');
+  gear.classList.add('hold');
+  holdTimer = setTimeout(() => { holdEnd(); device.parent ? openPanel() : openLock(); }, ms);
+}
+function holdEnd(){ clearTimeout(holdTimer); holdTimer = null; gear.classList.remove('hold'); }
+gear.addEventListener('pointerdown', holdStart);
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => gear.addEventListener(ev, holdEnd));
+gear.addEventListener('contextmenu', e => e.preventDefault());
+
+function newQuestion(){
+  // Kleines Einmaleins ohne die ganz leichten Aufgaben (3 bis 9)
+  const a = 3 + Math.floor(Math.random() * 7), b = 3 + Math.floor(Math.random() * 7);
+  mathAnswer = a * b; mathInput = '';
+  $('#lockQ').textContent = `Wie viel ist ${a} × ${b}?`;
+  $('#lockA').textContent = '';
+}
+function openLock(){ newQuestion(); $('#lock').classList.add('open'); }
+function closeLock(){ $('#lock').classList.remove('open'); }
+$('#pad').innerHTML = [1,2,3,4,5,6,7,8,9,'⌫',0,'OK'].map(k => `<button type="button" data-k="${k}" class="${k === 'OK' ? 'go' : ''}">${k}</button>`).join('');
+$('#lock').addEventListener('click', e => {
+  const k = e.target.closest('[data-k]'), c = e.target.closest('[data-lock]');
+  if (c){ closeLock(); return; }
+  if (!k) return;
+  const v = k.dataset.k;
+  if (v === '⌫') mathInput = mathInput.slice(0, -1);
+  else if (v === 'OK'){
+    if (Number(mathInput) === mathAnswer){ closeLock(); openPanel(); return; }
+    const b = $('#lockBox'); b.classList.remove('shakeit'); void b.offsetWidth; b.classList.add('shakeit');
+    newQuestion(); return;
+  } else if (mathInput.length < 4) mathInput += v;
+  $('#lockA').textContent = mathInput;
+});
+
+/* ---------------- Elternbereich ---------------- */
+let panelOpen = false, idleTimer = null;
+const panelBox = $('#panelBox');
+const form = {
+  dest:'see', destName:'Gardasee', destPhrase:'am Gardasee', start:'', end:'', editDest:false,
+  pType:'essen', pMode:'in', pIn:45, pAt:'', pDur:30, pExt:true,
+  sName:'', sIcon:'hotel', sMode:'in', sIn:60, sAt:'', joinCode:'',
+  mMode:'in', mIn:30, mAt:'', mDur:30
+};
+function bumpIdle(){ clearTimeout(idleTimer); idleTimer = setTimeout(closePanel, 3 * MIN); }
+function openPanel(){
+  panelOpen = true;
+  if (!state.trip && !form.draft){ const n = floorMin(Date.now()); form.start = hm(n); form.end = hm(n + 3 * HOUR); form.startAuto = true; }
+  renderPanel(); $('#panel').classList.add('open'); bumpIdle();
+}
+// Entwurf vor dem Start: Pausen, Medienzeit und Zwischenziele schon vorab planen.
+// „… Min. nach Start“-Einträge (rel) wandern mit, wenn sich die Startzeit noch ändert.
+function syncDraft(){
+  const d = form.draft || (form.draft = {pauses:[], media:[], stops:[], mediaOn:false, start:0, end:0});
+  const s = form.startAuto || !form.start ? floorMin(Date.now()) : timeNear(form.start);
+  if (d.start && s !== d.start) for (const x of [...d.pauses, ...d.media, ...d.stops]) if (x.rel) x.at += s - d.start;
+  d.start = s;
+  d.end = form.end ? timeAfter(form.end, s) : s + 3 * HOUR;
+  return d;
+}
+function closePanel(){ panelOpen = false; form.editDest = false; $('#panel').classList.remove('open'); clearTimeout(idleTimer); }
+
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'}[ch]));
+const chip = (f, v, label, cur) => `<button type="button" class="chip ${String(cur) === String(v) ? 'on' : ''}" data-act="set" data-f="${f}" data-v="${v}">${label}</button>`;
+const ic = key => `<canvas class="ic" data-icon="${key}"></canvas>`;
+
+function secDest(isNew){
+  return `<div class="sec"><h3>${isNew ? 'Wohin geht die Reise?' : 'Ziel ändern'}</h3>
+    <div class="grid">${DESTS.map(d => `<button type="button" class="pick ${form.dest === d.key ? 'on' : ''}" data-act="dest" data-key="${d.key}"><canvas data-icon="${d.key}"></canvas>${d.name}</button>`).join('')}</div>
+    <div class="row"><span class="lbl">Name</span><input class="tin wide" data-f="destName" value="${esc(form.destName)}"></div>
+    <div class="row"><span class="lbl">Ansage</span><span class="small">„… dann sind wir</span><input class="tin wide" data-f="destPhrase" value="${esc(form.destPhrase)}"><span class="small">!“</span></div>
+    ${isNew ? '' : `<div class="row"><button class="btn okb" data-act="saveDest">Ziel übernehmen</button><button class="btn ghost" data-act="cancelDest">Abbrechen</button></div>`}
+  </div>`;
+}
+function secNewTrip(){
+  return `<div class="sec"><h3>Zeiten</h3>
+    <div class="row"><span class="lbl">Start</span><input type="time" class="tin" data-f="start" value="${form.start}"><button class="btn sm ghost" data-act="startNow">jetzt</button>${form.startAuto ? '<span class="small">läuft automatisch mit der Uhr</span>' : ''}</div>
+    <div class="row"><span class="lbl">Ankunft</span><input type="time" class="tin" data-f="end" value="${form.end}"></div>
+    <div class="row"><span class="small">Fahrtdauer:</span>${[1,2,3,4,5,6,8].map(h => `<button type="button" class="chip" data-act="dur" data-v="${h}">${h} Std</button>`).join('')}</div>
+    <div class="row"><button class="btn okb" data-act="startTrip">Los geht’s! 🚐</button></div>
+    <div class="small">Pausen, Medienzeit und Zwischenziele kannst du weiter unten schon vorab einplanen.</div>
+  </div>`;
+}
+function secTrip(tr){
+  return `<div class="sec"><h3>Reise</h3>
+    <div class="row">${ic(tr.dest.key)}<b style="flex:1">${esc(tr.dest.name)}</b><button class="btn sm ghost" data-act="editDest">Ziel ändern</button></div>
+    <div class="row"><span class="lbl">Start</span><input type="time" class="tin" data-change="setStart" value="${hm(tr.start)}"><button class="btn sm ghost" data-act="tripStartNow">jetzt</button></div>
+    <div class="row"><span class="lbl">Ankunft</span><input type="time" class="tin" data-change="setEnd" value="${hm(tr.end)}"><span class="small">noch ${fmtShort(Math.max(0, Math.ceil((tr.end - Date.now()) / MIN)))}</span></div>
+    <div class="row"><span class="small">Ankunft verschieben:</span>${[-15,-5,5,15,30,60].map(v => `<button type="button" class="chip" data-act="shift" data-v="${v}">${v > 0 ? '+' : '−'}${Math.abs(v)} Min</button>`).join('')}</div>
+    <div class="row"><button class="btn sm warn" data-act="endTrip">Reise beenden</button></div>
+  </div>`;
+}
+const inLabel = () => state.trip ? 'in … Minuten' : '… Min. nach Start';
+function secPause(tr){
+  const now = Date.now(), live = !!state.trip;
+  const list = tr.pauses.slice().sort((a, b) => a.at - b.at).map(p => {
+    const end = p.at + p.dur * MIN, act = live && now >= p.at && now < end, past = live && now >= end;
+    return `<div class="item ${past ? 'past' : ''}">${ic(p.type)}<span class="t">${hm(p.at)}–${hm(end)} · ${PAUSES[p.type].label} (${p.dur} Min)${act ? ' · <span style="color:var(--ok)">läuft</span>' : ''}${p.ext ? '' : ' <span class="small">· ohne Verschiebung</span>'}</span>
+      ${past ? '' : `<button class="btn sm ghost" data-act="pPlus" data-id="${p.id}">+5</button>`}
+      ${act ? `<button class="btn sm okb" data-act="pDone" data-id="${p.id}">Weiter geht’s</button>` : ''}
+      <button class="btn sm warn" data-act="pDel" data-id="${p.id}">✕</button></div>`;
+  }).join('');
+  return `<div class="sec"><h3>Pausen</h3>
+    <div class="row">${Object.keys(PAUSES).map(k => `<button type="button" class="pick ${form.pType === k ? 'on' : ''}" style="min-width:96px" data-act="set" data-f="pType" data-v="${k}"><canvas data-icon="${k}"></canvas>${PAUSES[k].label}</button>`).join('')}</div>
+    <div class="row"><span class="lbl">Wann</span>${chip('pMode', 'in', inLabel(), form.pMode)}${chip('pMode', 'um', 'um … Uhr', form.pMode)}</div>
+    ${form.pMode === 'in'
+      ? `<div class="row"><span class="lbl"></span>${[15,30,45,60,90,120].map(v => chip('pIn', v, v, form.pIn)).join('')}<input type="number" inputmode="numeric" class="tin num" data-f="pIn" value="${form.pIn}"> Min</div>`
+      : `<div class="row"><span class="lbl"></span><input type="time" class="tin" data-f="pAt" value="${form.pAt}"></div>`}
+    <div class="row"><span class="lbl">Dauer</span>${[10,15,20,30,45,60].map(v => chip('pDur', v, v, form.pDur)).join('')}<input type="number" inputmode="numeric" class="tin num" data-f="pDur" value="${form.pDur}"> Min</div>
+    <div class="row"><label class="chk"><input type="checkbox" data-f="pExt" ${form.pExt ? 'checked' : ''}> Ankunft um die Pausendauer verschieben</label></div>
+    <div class="row"><button class="btn okb" data-act="addPause">Pause einplanen</button>${live ? '<button class="btn ghost" data-act="pauseNow">Pause jetzt starten</button>' : ''}</div>
+    ${list}
+  </div>`;
+}
+function secMedia(tr){
+  const now = Date.now(), live = !!state.trip;
+  let h = `<div class="sec"><h3>Medienzeit</h3>
+    <div class="row"><label class="chk"><input type="checkbox" data-act-check="media" ${tr.mediaOn ? 'checked' : ''}> Medienzeit in der Strecke anzeigen</label></div>`;
+  if (tr.mediaOn){
+    const list = (tr.media || []).slice().sort((a, b) => a.at - b.at).map(m => {
+      const end = m.at + m.dur * MIN, act = live && now >= m.at && now < end, past = live && now >= end;
+      return `<div class="item ${past ? 'past' : ''}">${ic('tablet')}<span class="t">${hm(m.at)}–${hm(end)} · Medienzeit (${m.dur} Min)${act ? ' · <span style="color:var(--ok)">läuft</span>' : ''}</span>
+        ${past ? '' : `<button class="btn sm ghost" data-act="mPlus" data-id="${m.id}">+5</button>`}
+        ${act ? `<button class="btn sm okb" data-act="mDone" data-id="${m.id}">Beenden</button>` : ''}
+        <button class="btn sm warn" data-act="mDel" data-id="${m.id}">✕</button></div>`;
+    }).join('');
+    h += `<div class="row"><span class="lbl">Wann</span>${chip('mMode', 'in', inLabel(), form.mMode)}${chip('mMode', 'um', 'um … Uhr', form.mMode)}</div>
+      ${form.mMode === 'in'
+        ? `<div class="row"><span class="lbl"></span>${[15,30,45,60,90,120].map(v => chip('mIn', v, v, form.mIn)).join('')}<input type="number" inputmode="numeric" class="tin num" data-f="mIn" value="${form.mIn}"> Min</div>`
+        : `<div class="row"><span class="lbl"></span><input type="time" class="tin" data-f="mAt" value="${form.mAt}"></div>`}
+      <div class="row"><span class="lbl">Dauer</span>${[15,20,30,45,60,90].map(v => chip('mDur', v, v, form.mDur)).join('')}<input type="number" inputmode="numeric" class="tin num" data-f="mDur" value="${form.mDur}"> Min</div>
+      <div class="row"><button class="btn okb" data-act="addMedia">Medienzeit einplanen</button>${live ? '<button class="btn ghost" data-act="mediaNow">Medienzeit jetzt starten</button>' : ''}</div>
+      <div class="small">Medienzeit verschiebt die Ankunft nicht.</div>
+      ${list}`;
+  }
+  return h + '</div>';
+}
+function secStops(tr){
+  const list = tr.stops.slice().sort((a, b) => a.at - b.at).map(st =>
+    `<div class="item ${state.trip && Date.now() >= st.at ? 'past' : ''}">${ic(st.icon)}<span class="t">${hm(st.at)} · ${esc(st.name)}</span><button class="btn sm warn" data-act="sDel" data-id="${st.id}">✕</button></div>`).join('');
+  return `<div class="sec"><h3>Zwischenziele</h3>
+    <div class="grid">${DESTS.map(d => `<button type="button" class="pick ${form.sIcon === d.key ? 'on' : ''}" data-act="set" data-f="sIcon" data-v="${d.key}"><canvas data-icon="${d.key}"></canvas>${d.name}</button>`).join('')}</div>
+    <div class="row"><span class="lbl">Name</span><input class="tin wide" data-f="sName" placeholder="z. B. Österreich, Tante Uschi" value="${esc(form.sName)}"></div>
+    <div class="row"><span class="lbl">Wann</span>${chip('sMode', 'in', inLabel(), form.sMode)}${chip('sMode', 'um', 'um … Uhr', form.sMode)}
+      ${form.sMode === 'in' ? `<input type="number" inputmode="numeric" class="tin num" data-f="sIn" value="${form.sIn}"> Min` : `<input type="time" class="tin" data-f="sAt" value="${form.sAt}">`}</div>
+    <div class="row"><button class="btn okb" data-act="addStop">Zwischenziel hinzufügen</button></div>
+    ${list}
+  </div>`;
+}
+function secSync(){
+  const st = Sync.status;
+  const dot = st === 'verbunden' ? 'on' : st === 'aus' ? '' : 'off';
+  const label = {aus:'nicht verbunden', verbunden:'verbunden', offline:'gerade offline – synchronisiert, sobald wieder Netz da ist', verbinde:'verbinde …'}[st];
+  return `<div class="sec"><h3>Eltern-Handy verbinden</h3>
+    <div class="row"><span><span class="dot ${dot}"></span>${label}</span></div>
+    ${device.code
+      ? `<div class="row"><span class="code">${device.code.slice(0, 4)}-${device.code.slice(4)}</span></div>
+         <div class="small">Auf dem anderen Gerät dieselbe App öffnen → Zahnrad → „Code eingeben“. Änderungen auf einem Gerät erscheinen dann auf beiden.</div>
+         <div class="row"><button class="btn sm warn" data-act="syncLeave">Verbindung trennen</button></div>`
+      : `<div class="row"><button class="btn" data-act="syncCreate">Neuen Code erstellen</button></div>
+         <div class="row"><span class="lbl">Code eingeben</span><input class="tin" style="width:170px;text-transform:uppercase" data-f="joinCode" placeholder="ABCD-EFGH" value="${esc(form.joinCode)}"><button class="btn sm" data-act="syncJoin">Verbinden</button></div>
+         <div class="small">Läuft über den kostenlosen Dienst ntfy.sh. Ohne Internet funktioniert die App ganz normal weiter.</div>`}
+    <div class="row"><label class="chk"><input type="checkbox" data-act-check="parent" ${device.parent ? 'checked' : ''}> Dies ist ein Eltern-Gerät (1 Sek. drücken, keine Rechenaufgabe)</label></div>
+  </div>`;
+}
+function secMore(){
+  return `<div class="sec"><h3>Schwebendes Fenster & Ansage</h3>
+    <div class="row"><span class="lbl">Form</span>${chip('ratio', 2, 'breit', device.ratio)}${chip('ratio', 3, 'breiter', device.ratio)}${chip('ratio', 4, 'ganz breit', device.ratio)}</div>
+    <div class="row"><button class="btn" data-act="pip">⧉ Schwebendes Fenster starten</button><button class="btn ghost" data-act="testSpeak">🔊 Ansage testen</button></div>
+    <div class="small">Das schwebende Fenster liegt über anderen Apps. Man kann es verschieben und mit zwei Fingern größer ziehen.</div>
+  </div>`;
+}
+function renderPanel(){
+  const tr = state.trip;
+  let h = `<div class="ph"><h2>Elternbereich</h2><button class="btn ghost" data-act="close">Fertig</button></div>`;
+  if (!tr){ const d = syncDraft(); h += secDest(true) + secNewTrip() + secPause(d) + secMedia(d) + secStops(d); }
+  else h += (form.editDest ? secDest(false) : '') + secTrip(tr) + secPause(tr) + secMedia(tr) + secStops(tr);
+  h += secSync() + secMore() + `<div class="sec"><h3>Zurücksetzen</h3>
+    <div class="small">Löscht die Reise und alle Einstellungen auf diesem Gerät (auch die Handy-Verbindung). Die App startet danach wie frisch installiert.</div>
+    <div class="row"><button class="btn warn" data-act="resetAll">Alles zurücksetzen</button></div></div>`;
+  const y = panelBox.scrollTop;
+  panelBox.innerHTML = h;
+  panelBox.scrollTop = y;
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  panelBox.querySelectorAll('canvas[data-icon]').forEach(cv => {
+    const w = cv.getBoundingClientRect().width || 34;
+    cv.width = cv.height = Math.round(w * d);
+    drawIcon(cv.getContext('2d'), cv.dataset.icon, cv.width / 2, cv.width / 2, cv.width / 2 - 2 * d);
+  });
+}
+
+panelBox.addEventListener('input', e => {
+  const f = e.target.dataset.f; if (!f) return;
+  bumpIdle();
+  if (e.target.type === 'checkbox') form[f] = e.target.checked;
+  else if (e.target.type === 'number') form[f] = Number(e.target.value) || 0;
+  else form[f] = e.target.value;
+  if (f === 'start') form.startAuto = false;
+});
+// Startzeit einer neuen Reise läuft mit der Uhr mit, bis sie von Hand geändert wird
+setInterval(() => {
+  if (!panelOpen || state.trip || !form.startAuto) return;
+  const v = hm(Date.now()), el = panelBox.querySelector('[data-f="start"]');
+  if (form.start === v) return;
+  form.start = v;
+  if (el && document.activeElement !== el) el.value = v;
+}, 5000);
+panelBox.addEventListener('change', e => {
+  bumpIdle();
+  const tr = state.trip, a = e.target.dataset.change;
+  if (e.target.dataset.actCheck === 'parent'){ device.parent = e.target.checked; saveDevice(); return; }
+  if (e.target.dataset.actCheck === 'media'){
+    const t = tr || syncDraft();
+    t.mediaOn = e.target.checked; t.media = t.media || [];
+    tr ? commit() : renderPanel(); return;
+  }
+  if (!tr || !a || !e.target.value) return;
+  if (a === 'setStart'){
+    tr.start = timeNear(e.target.value);
+    if (tr.end <= tr.start) tr.end = tr.start + HOUR;
+    commit();
+  } else if (a === 'setEnd'){
+    tr.end = timeAfter(e.target.value, tr.start); commit();
+  }
+});
+panelBox.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  bumpIdle();
+  const a = b.dataset.act, live = !!state.trip, tr = state.trip || syncDraft(), now = Date.now();
+  const byId = (arr, id) => arr.find(x => x.id === id);
+  // Laufende Reise speichern und synchronisieren, Entwurf nur neu anzeigen (Ankunft ins Formular übernehmen)
+  const done = () => { if (live) commit(); else { form.end = hm(tr.end); renderPanel(); } };
+  const base = live ? now : tr.start;
+  switch (a){
+    case 'close': closePanel(); return;
+    case 'set': {
+      const v = b.dataset.v, f = b.dataset.f;
+      if (f === 'ratio'){ device.ratio = Number(v); saveDevice(); pipResize(); }
+      else form[f] = isNaN(Number(v)) ? v : Number(v);
+      break;
+    }
+    case 'dest': {
+      const d = DESTS.find(x => x.key === b.dataset.key);
+      form.dest = d.key; form.destName = d.name; form.destPhrase = d.phrase; break;
+    }
+    case 'startNow': form.start = hm(now); form.startAuto = true; break;
+    case 'dur': {
+      const ext = tr.pauses.reduce((sum, p) => sum + (p.ext ? p.dur : 0), 0);
+      form.end = hm(tr.start + Number(b.dataset.v) * HOUR + ext * MIN); break;
+    }
+    case 'startTrip': {
+      const d = syncDraft();
+      state.trip = {id:rid(6), start:d.start, end:d.end, dest:{key:form.dest, name:form.destName.trim() || 'Ziel', phrase:form.destPhrase.trim() || 'da'},
+        pauses:d.pauses, stops:d.stops, media:d.media, mediaOn:d.mediaOn};
+      form.draft = null;
+      commit(); return;
+    }
+    case 'editDest': form.editDest = true; form.dest = tr.dest.key; form.destName = tr.dest.name; form.destPhrase = tr.dest.phrase; break;
+    case 'cancelDest': form.editDest = false; break;
+    case 'saveDest':
+      tr.dest = {key:form.dest, name:form.destName.trim() || 'Ziel', phrase:form.destPhrase.trim() || 'da'};
+      form.editDest = false; commit(); return;
+    case 'tripStartNow':
+      tr.start = floorMin(now);
+      if (tr.end <= tr.start) tr.end = tr.start + HOUR;
+      commit(); return;
+    case 'shift':
+      tr.end = Math.max(tr.end + Number(b.dataset.v) * MIN, Math.max(now, tr.start) + MIN); commit(); return;
+    case 'endTrip':
+      if (confirm('Reise wirklich beenden?')){ state.trip = null; commit(); }
+      return;
+    case 'addPause': case 'pauseNow': {
+      const at = a === 'pauseNow' ? floorMin(now) : form.pMode === 'in' ? floorMin(base + form.pIn * MIN) : timeNear(form.pAt);
+      const dur = Math.max(1, Math.round(form.pDur));
+      if (a === 'addPause' && form.pMode === 'um' && !form.pAt){ alert('Bitte eine Uhrzeit wählen.'); return; }
+      if (at > tr.end){ alert('Diese Pause läge nach der Ankunft. Bitte zuerst die Ankunft verschieben.'); return; }
+      tr.pauses.push({id:rid(6), at, dur, type:form.pType, ext:form.pExt, rel:!live && form.pMode === 'in'});
+      if (form.pExt) tr.end += dur * MIN;
+      done(); return;
+    }
+    case 'pPlus': { const p = byId(tr.pauses, b.dataset.id); p.dur += 5; if (p.ext) tr.end += 5 * MIN; done(); return; }
+    case 'pDone': {
+      const p = byId(tr.pauses, b.dataset.id), used = Math.max(1, Math.ceil((now - p.at) / MIN)), diff = p.dur - used;
+      p.dur = used; if (p.ext && diff > 0) tr.end -= diff * MIN; done(); return;
+    }
+    case 'pDel': {
+      const p = byId(tr.pauses, b.dataset.id);
+      // Nur noch nicht begonnene Pausen geben ihre Zeit zurück
+      if (p.ext && (!live || p.at > now)) tr.end -= p.dur * MIN;
+      tr.pauses = tr.pauses.filter(x => x !== p); done(); return;
+    }
+    case 'addStop': {
+      const at = form.sMode === 'in' ? floorMin(base + form.sIn * MIN) : timeNear(form.sAt);
+      if (form.sMode === 'um' && !form.sAt){ alert('Bitte eine Uhrzeit wählen.'); return; }
+      const d = DESTS.find(x => x.key === form.sIcon);
+      tr.stops.push({id:rid(6), at, icon:form.sIcon, name:form.sName.trim() || d.name, rel:!live && form.sMode === 'in'});
+      form.sName = ''; done(); return;
+    }
+    case 'addMedia': case 'mediaNow': {
+      if (a === 'addMedia' && form.mMode === 'um' && !form.mAt){ alert('Bitte eine Uhrzeit wählen.'); return; }
+      const at = a === 'mediaNow' ? floorMin(now) : form.mMode === 'in' ? floorMin(base + form.mIn * MIN) : timeNear(form.mAt);
+      tr.media = tr.media || [];
+      tr.media.push({id:rid(6), at, dur:Math.max(1, Math.round(form.mDur)), rel:!live && form.mMode === 'in'});
+      done(); return;
+    }
+    case 'mPlus': { byId(tr.media, b.dataset.id).dur += 5; done(); return; }
+    case 'mDone': { const m = byId(tr.media, b.dataset.id); m.dur = Math.max(1, Math.ceil((now - m.at) / MIN)); done(); return; }
+    case 'mDel': tr.media = tr.media.filter(x => x.id !== b.dataset.id); done(); return;
+    case 'sDel': tr.stops = tr.stops.filter(x => x.id !== b.dataset.id); done(); return;
+    case 'syncCreate': device.code = rid(8); saveDevice(); Sync.start(); break;
+    case 'syncJoin': {
+      const code = form.joinCode.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (code.length !== 8){ alert('Der Code hat 8 Zeichen, z. B. ABCD-EFGH.'); return; }
+      device.code = code; saveDevice(); form.joinCode = ''; Sync.start(); break;
+    }
+    case 'syncLeave': device.code = null; saveDevice(); Sync.stop(); break;
+    case 'resetAll':
+      if (!confirm('Wirklich alles zurücksetzen? Reise und Einstellungen auf diesem Gerät werden gelöscht.')) return;
+      Sync.stop();
+      try{ ['wm-state', 'wm-device', 'wm-half'].forEach(k => localStorage.removeItem(k)); }catch(err){}
+      location.reload(); return;
+    case 'pip': togglePip(); return;
+    case 'testSpeak': speak(speechText()); return;
+  }
+  renderPanel();
+});
+
+/* ---------------- Synchronisation (ntfy.sh) ---------------- */
+const Sync = {
+  es:null, status:'aus',
+  topic(){ return 'wie-lange-noch-' + device.code; },
+  setStatus(s){ if (this.status !== s){ this.status = s; if (panelOpen && !document.activeElement?.matches('input')) renderPanel(); } },
+  start(){
+    this.stop();
+    if (!device.code || !window.EventSource) return;
+    this.setStatus('verbinde');
+    this.es = new EventSource(`https://ntfy.sh/${this.topic()}/sse?since=12h`);
+    this.es.onopen = () => { this.setStatus('verbunden'); this.send({t:'hello'}); if (state.updatedAt) this.push(); };
+    this.es.onerror = () => this.setStatus(navigator.onLine === false ? 'offline' : 'verbinde');
+    this.es.onmessage = e => {
+      let d, m;
+      try{ d = JSON.parse(e.data); if (d.event !== 'message') return; m = JSON.parse(d.message); }catch(err){ return; }
+      if (!m || m.from === device.id) return;
+      if (m.t === 'state' && m.s && m.s.updatedAt > state.updatedAt){
+        state = m.s; store('wm-state', state); onStateChange();
+      } else if (m.t === 'hello' && Date.now() / 1000 - d.time < 60 && state.updatedAt){
+        this.push();
+      }
+    };
+  },
+  stop(){ if (this.es){ this.es.close(); this.es = null; } this.setStatus('aus'); },
+  send(msg){
+    if (!device.code) return;
+    msg.from = device.id;
+    fetch('https://ntfy.sh/' + this.topic(), {method:'POST', body:JSON.stringify(msg)}).catch(() => {});
+  },
+  push(){ this.send({t:'state', s:state}); }
+};
+window.addEventListener('online', () => { if (device.code) Sync.start(); });
+window.addEventListener('offline', () => { if (device.code) Sync.setStatus('offline'); });
+
+/* ---------------- Schwebendes Fenster (Bild-in-Bild) ---------------- */
+const pipVideo = $('#pipVideo'), pipCanvas = document.createElement('canvas'), pctx = pipCanvas.getContext('2d');
+let pipReady = false, pipActive = false, pipTick = 0;
+function pipResize(){ pipCanvas.height = 300; pipCanvas.width = Math.round(300 * (device.ratio || 3)); drawPip(); }
+function drawPip(){ drawScene(pctx, pipCanvas.width, pipCanvas.height, Date.now(), {pip:true}); }
+function preparePip(){
+  if (pipReady) return true;
+  if (!pipCanvas.captureStream) return false;
+  pipResize();
+  pipVideo.srcObject = pipCanvas.captureStream(15);
+  pipVideo.play().catch(() => {});
+  setInterval(() => { pipTick++; if (pipActive || pipTick % 10 === 0) drawPip(); if (pipTick % 10 === 0) checkHalf(); }, 100);
+  pipReady = true;
+  return true;
+}
+function isPip(){ return document.pictureInPictureElement === pipVideo || pipVideo.webkitPresentationMode === 'picture-in-picture'; }
+function togglePip(){
+  if (!preparePip()){ alert('Dieses Gerät unterstützt das schwebende Fenster leider nicht.'); return; }
+  pipVideo.play().catch(() => {});
+  const fail = () => alert('Das schwebende Fenster konnte nicht gestartet werden. Bitte noch einmal tippen.');
+  try{
+    if (isPip()){
+      if (document.exitPictureInPicture && document.pictureInPictureElement) document.exitPictureInPicture();
+      else pipVideo.webkitSetPresentationMode('inline');
+    } else if (typeof pipVideo.webkitSetPresentationMode === 'function' && pipVideo.webkitSupportsPresentationMode && pipVideo.webkitSupportsPresentationMode('picture-in-picture')){
+      pipVideo.webkitSetPresentationMode('picture-in-picture');
+    } else if (pipVideo.requestPictureInPicture){
+      pipVideo.requestPictureInPicture().catch(fail);
+    } else alert('Dieses Gerät unterstützt das schwebende Fenster leider nicht.');
+  }catch(err){ fail(); }
+}
+pipVideo.addEventListener('enterpictureinpicture', () => { pipActive = true; });
+pipVideo.addEventListener('leavepictureinpicture', () => { pipActive = false; });
+pipVideo.addEventListener('webkitpresentationmodechanged', () => { pipActive = isPip(); });
+$('#pipBtn').addEventListener('click', togglePip);
+
+/* ---------------- Bildschirm wach halten ---------------- */
+let wakeLock = null;
+async function keepAwake(){
+  try{ if ('wakeLock' in navigator && document.visibilityState === 'visible' && !wakeLock){
+    wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } }catch(e){}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible'){ keepAwake(); updateInfo(); } });
+document.addEventListener('pointerdown', keepAwake, {once:true});
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+/* ---------------- Start ---------------- */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+updateInfo();
+requestAnimationFrame(loop);
+preparePip();
+if (device.code) Sync.start();
+</script>
+</body>
+</html>
