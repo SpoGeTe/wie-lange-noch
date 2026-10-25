@@ -230,6 +230,31 @@ function fs(c, fill, lw){ c.fillStyle = fill; c.fill(); if (lw){ c.lineWidth = l
 function poly(c, pts, u){ c.beginPath(); pts.forEach(([x, y], i) => i ? c.lineTo(x * u, y * u) : c.moveTo(x * u, y * u)); c.closePath(); }
 function circ(c, x, y, r){ c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); }
 
+/* Kinderkopf mit blonden Haaren; small = jüngeres Kind mit Zöpfchen und winkender Hand */
+function drawKid(c, x, y, r, t, moving, small, shirt){
+  y += moving ? Math.sin(t / 260 + small * 1.7) * 0.5 : 0;
+  const HAIR = '#f7d154', SKIN = '#ffdcbc', lw = Math.max(0.9, r * 0.22);
+  rrPath(c, x - r * 1.25, y + r * 0.75, r * 2.5, r * 2.2, r * 0.8); fs(c, shirt, lw);
+  if (small){ for (const sx of [-1, 1]){ circ(c, x + sx * r * 1.05, y - r * 0.05, r * 0.42); fs(c, HAIR, lw); } }
+  circ(c, x, y, r); fs(c, SKIN, lw);
+  // Haare: Kappe oben mit Pony
+  c.beginPath(); c.arc(x, y, r * 1.04, Math.PI * 0.92, Math.PI * 2.08);
+  c.quadraticCurveTo(x + r * 0.5, y - r * 0.15, x + r * 0.1, y - r * 0.35);
+  c.quadraticCurveTo(x - r * 0.4, y - r * 0.05, x - r * 1.03, y + r * 0.1);
+  c.closePath(); fs(c, HAIR, lw);
+  c.fillStyle = INK;
+  circ(c, x - r * 0.36, y + r * 0.22, r * 0.13); c.fill();
+  circ(c, x + r * 0.36, y + r * 0.22, r * 0.13); c.fill();
+  c.beginPath(); c.arc(x, y + r * 0.42, r * 0.28, Math.PI * 0.15, Math.PI * 0.85); c.lineWidth = r * 0.12; c.strokeStyle = INK; c.stroke();
+  c.fillStyle = 'rgba(255,120,140,.45)';
+  circ(c, x - r * 0.62, y + r * 0.48, r * 0.17); c.fill();
+  circ(c, x + r * 0.62, y + r * 0.48, r * 0.17); c.fill();
+  if (small){
+    const hy = y + r * 0.35 + (moving ? Math.sin(t / 220) * r * 0.35 : 0);
+    circ(c, x + r * 1.55, hy, r * 0.38); fs(c, SKIN, lw * 0.8);
+  }
+}
+
 /* Rotes Wohnmobil, fährt nach rechts. x = linke Kante, y = Straßenkontakt, w = Breite */
 function drawCamper(c, x, y, w, t, mode){
   const k = w / 120, lw = 3;
@@ -259,8 +284,13 @@ function drawCamper(c, x, y, w, t, mode){
   // Zierstreifen
   c.fillStyle = '#fff4e0'; c.fillRect(4.5, -33, 79, 5); c.fillRect(86, -33, 31, 5);
   // Fenster
-  rrPath(c, 10, -57, 27, 15, 4); fs(c, '#bfe3ff', 2.5);
-  c.strokeStyle = '#fff'; c.lineWidth = 2; c.beginPath(); c.moveTo(14, -46); c.lineTo(22, -54); c.stroke();
+  rrPath(c, 10, -57, 27, 15, 4); fs(c, '#bfe3ff');
+  // Zwei blonde Kinder (8 und 5) schauen hinten aus dem Fenster
+  c.save(); rrPath(c, 11, -56, 25, 13, 3); c.clip();
+  drawKid(c, 18, -46, 5, t, moving, 0, '#4aa3ff');
+  drawKid(c, 29.5, -45, 4.1, t, moving, 1, '#ff9f43');
+  c.restore();
+  rrPath(c, 10, -57, 27, 15, 4); c.lineWidth = 2.5; c.strokeStyle = INK; c.stroke();
   rrPath(c, 80, -62, 19, 8, 3); fs(c, '#bfe3ff', 2.5);
   c.beginPath(); c.moveTo(88, -44); c.lineTo(101, -44); c.lineTo(111, -34); c.lineTo(88, -34); c.closePath(); fs(c, '#bfe3ff', 2.5);
   // Tür
@@ -463,8 +493,8 @@ function drawScene(c, W, H, now, opt = {}){
   if (px > xs){
     c.beginPath(); c.moveTo(34 * s, roadY); c.lineTo(px, roadY); c.lineWidth = rt; c.strokeStyle = '#ffc93c'; c.stroke();
   }
-  // Mittellinie, wandert beim Fahren Richtung Ziel, steht in Pausen still
-  c.setLineDash([14 * s, 12 * s]); c.lineDashOffset = -(dash / 1000) * 22 * s; c.lineWidth = 3.5 * s; c.lineCap = 'butt';
+  // Mittellinie zieht beim Fahren nach hinten weg (Wohnmobil fährt vorwärts), steht in Pausen still
+  c.setLineDash([14 * s, 12 * s]); c.lineDashOffset = (dash / 1000) * 22 * s; c.lineWidth = 3.5 * s; c.lineCap = 'butt';
   c.beginPath(); c.moveTo(Math.max(px, 40 * s), roadY); c.lineTo(W - 58 * s, roadY); c.strokeStyle = 'rgba(255,255,255,.9)'; c.stroke();
   if (px > 40 * s){ c.beginPath(); c.moveTo(40 * s, roadY); c.lineTo(px, roadY); c.strokeStyle = 'rgba(190,120,0,.55)'; c.stroke(); }
   c.setLineDash([]); c.lineCap = 'round';
