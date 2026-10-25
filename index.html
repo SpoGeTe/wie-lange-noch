@@ -1198,7 +1198,35 @@ function pipFail(err){
     + ` · rs=${pipVideo.readyState} paused=${pipVideo.paused} ${window.navigator.standalone ? 'Home' : 'Browser'}`;
   alert('Das schwebende Fenster ließ sich nicht starten.\n\nBitte schick Claude diesen Hinweis:\n' + info + (clipMode ? ' (Video-Modus)' : ' (Live-Modus)'));
 }
+// iPadOS erlaubt Bild-in-Bild nicht in Apps vom Home-Bildschirm, nur in Safari.
+// Darum dort Safari öffnen und Reise + Verbindungscode im #-Teil der Adresse mitgeben
+// (der #-Teil bleibt auf dem Gerät und wird nicht an GitHub geschickt).
+const isHomeApp = window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+function openInSafari(){
+  const data = btoa(unescape(encodeURIComponent(JSON.stringify({s:state, c:device.code, r:device.ratio}))));
+  const url = location.href.split('#')[0] + '#reise=' + data;
+  location.href = 'x-safari-' + url;
+  setTimeout(() => {
+    if (document.visibilityState === 'visible') alert('Safari ließ sich nicht automatisch öffnen. Bitte Safari öffnen und diese Adresse eingeben:\n\n' + location.href.split('#')[0]);
+  }, 2500);
+}
+function importFromUrl(){
+  const m = location.hash.match(/^#reise=(.+)$/);
+  if (!m) return;
+  try{
+    const d = JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    if (d.s && d.s.updatedAt >= state.updatedAt){ state = d.s; store('wm-state', state); }
+    if (d.c && !device.code) device.code = d.c;
+    if (d.r) device.ratio = d.r;
+    saveDevice();
+  }catch(err){}
+  history.replaceState(null, '', location.pathname + location.search);
+}
 function togglePip(){
+  if (isHomeApp && !isPip()){
+    if (confirm('Auf dem Home-Bildschirm erlaubt das iPad leider kein schwebendes Fenster – in Safari klappt es.\n\nJetzt in Safari öffnen? Die Reise wird mitgenommen.')) openInSafari();
+    return;
+  }
   if (!preparePip()){ alert('Dieses Gerät unterstützt das schwebende Fenster leider nicht.'); return; }
   if (isPip()){
     if (document.pictureInPictureElement && document.exitPictureInPicture) document.exitPictureInPicture();
@@ -1237,6 +1265,7 @@ document.addEventListener('gesturestart', e => e.preventDefault());
 
 /* ---------------- Start ---------------- */
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => {});
+importFromUrl();
 updateInfo();
 requestAnimationFrame(loop);
 preparePip();
