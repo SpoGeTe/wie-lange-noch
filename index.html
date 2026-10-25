@@ -23,23 +23,25 @@ input,select{-webkit-user-select:text;user-select:text;font:inherit}
   padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 #stage{display:block;width:100%;height:46vh;min-height:200px;border-bottom:4px solid var(--ink)}
 @media (orientation:portrait){#stage{height:32vh}}
-#info{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px 16px 70px;text-align:center}
+#info{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px 200px 20px;text-align:center}
+@media (max-width:700px){#info{padding:12px 16px 200px}}
 #remain{font-size:clamp(34px,7vw,76px);font-weight:800;letter-spacing:-.5px;line-height:1.05}
 #phrase{font-size:clamp(20px,3.4vw,36px);font-weight:700;color:var(--muted)}
 #next,#mnext{display:none;align-items:center;gap:12px;background:var(--card);border:3px solid var(--ink);border-radius:22px;
   padding:8px 18px 8px 10px;font-size:clamp(17px,2.6vw,26px);font-weight:700;box-shadow:0 4px 0 var(--ink)}
 #next canvas,#mnext canvas{width:46px;height:46px;flex:none}
-#mnext{border-color:#6b45c9;box-shadow:0 4px 0 #6b45c9}
+#mnext{border-color:#6b45c9;box-shadow:0 4px 0 #6b45c9;cursor:pointer}
 #cards{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
 #meta{font-size:15px;color:var(--muted)}
 #hint{font-size:15px;color:var(--muted);opacity:.85}
 .corner{position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px}
 #pipBtn{left:calc(14px + env(safe-area-inset-left));border:3px solid var(--ink);background:var(--card);color:var(--ink);
   border-radius:16px;padding:10px 14px;font:inherit;font-weight:700;font-size:15px;box-shadow:0 3px 0 var(--ink)}
-#gear{right:calc(14px + env(safe-area-inset-right));width:58px;height:58px;border-radius:50%;justify-content:center;
-  background:var(--card);border:3px solid var(--ink);opacity:.55}
-#gear svg{position:absolute;inset:-3px;width:58px;height:58px;transform:rotate(-90deg)}
+#gear{right:calc(14px + env(safe-area-inset-right));width:174px;height:174px;border-radius:50%;justify-content:center;
+  background:var(--card);border:4px solid var(--ink);opacity:.55}
+#gear svg{position:absolute;inset:-4px;width:174px;height:174px;transform:rotate(-90deg)}
 #gear circle{fill:none;stroke:var(--ok);stroke-width:6;stroke-dasharray:160;stroke-dashoffset:160}
+#gear .gi{font-size:96px;line-height:1}
 #gear.hold{opacity:1}
 #gear.hold circle{transition:stroke-dashoffset var(--hold,3s) linear;stroke-dashoffset:0}
 #pipBtn{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px}
@@ -109,7 +111,7 @@ label.chk input{width:24px;height:24px}
   <button id="pipBtn" class="corner" type="button"><video id="pipVideo" muted playsinline webkit-playsinline autoplay loop></video><span>Schwebend</span></button>
   <div id="gear" class="corner" aria-label="Elternbereich: 3 Sekunden gedrückt halten">
     <svg viewBox="0 0 58 58"><circle cx="29" cy="29" r="25.5"/></svg>
-    <span style="font-size:28px;line-height:1">⚙︎</span>
+    <span class="gi">⚙︎</span>
   </div>
 </div>
 
@@ -528,7 +530,8 @@ function drawScene(c, W, H, now, opt = {}){
     c.fillText(hm(p.at), mx, sy - 21 * s);
     c.globalAlpha = 1;
   }
-  // Medienzeit (optional): lila Band über der Straße mit Tablet-Schild
+  // Medienzeit (optional): lila Band über der Straße mit Tablet-Schild (antippbar)
+  const mediaHits = [];
   for (const m of mediaOf(tr)){
     const x0 = X(m.at), x1 = Math.max(X(m.at + m.dur * MIN), x0 + 10 * s), past = now >= m.at + m.dur * MIN;
     const by = roadY - rt / 2 - 14 * s, mx = (x0 + x1) / 2, sy = roadY - 60 * s;
@@ -536,6 +539,7 @@ function drawScene(c, W, H, now, opt = {}){
     rrPath(c, x0, by, x1 - x0, 8 * s, 4 * s); fs(c, MEDIA_COLOR, 2 * s);
     c.beginPath(); c.moveTo(mx, by); c.lineTo(mx, sy); c.lineWidth = 3 * s; c.strokeStyle = INK; c.stroke();
     drawIcon(c, 'tablet', mx, sy, 17 * s);
+    mediaHits.push({x:mx, y:sy, r:17 * s});
     c.font = `700 ${11 * s}px ui-rounded, system-ui, sans-serif`; c.fillStyle = INK; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
     c.fillText(hm(m.at), mx, sy - 21 * s);
     c.globalAlpha = 1;
@@ -573,7 +577,7 @@ function drawScene(c, W, H, now, opt = {}){
   let mode =phase === 'driving' && !pa ? 'drive' : 'park';
   if (now < fx.shakeUntil) mode = 'shake';
   drawCamper(c, cx, cy, cw, now, mode);
-  const box = {x:cx, y:cy - 76 * s, w:cw, h:80 * s};
+  const box = {x:cx, y:cy - 76 * s, w:cw, h:80 * s, media:mediaHits};
 
   // Blasen über dem Wohnmobil
   const bx = cx + cw * 0.5, by = cy - 92 * s;
@@ -665,7 +669,6 @@ function updateInfo(){
 }
 
 /* ---------------- Vorlesen ---------------- */
-let taps = [], lockUntil = 0;
 
 function speechText(){
   const tr = state.trip, now = Date.now();
@@ -678,28 +681,34 @@ function speechText(){
   const pa = activePause(tr, now);
   if (pa) t += 'Wir machen gerade Pause. ';
   t += left < 1.5 ? `Gleich sind wir ${tr.dest.phrase}!` : `Noch ungefähr ${sayDuration(left)}, dann sind wir ${tr.dest.phrase}!`;
-  const half = halfTime(tr);
-  if (now < half && half - now > 2 * MIN) t += ` Bis zur Hälfte sind es noch ungefähr ${sayDuration((half - now) / MIN)}.`;
-  else if (now >= half && now - half < 30 * MIN) t += ' Die Hälfte haben wir schon geschafft!';
+  // Beim Wohnmobil nur: Restzeit gesamt + Zeit bis zur nächsten Pause
   const np = nextPause(tr, now);
-  if (!pa && np && np.at < tr.end && np.at - now < 3 * HOUR){
-    t += ` In ungefähr ${sayDuration((np.at - now) / MIN)} machen wir ${(PAUSES[np.type] || PAUSES.essen).kid}.`;
+  if (np && np.at < tr.end){
+    t += ` Bis zur nächsten Pause dauert es noch ungefähr ${sayDuration((np.at - now) / MIN)}. Dann machen wir ${(PAUSES[np.type] || PAUSES.essen).kid}.`;
   }
-  const am = activeIn(mediaOf(tr), now), nm = nextIn(mediaOf(tr), now);
-  if (am) t += ` Gerade ist Medienzeit, noch ungefähr ${sayDuration((am.at + am.dur * MIN - now) / MIN)}.`;
-  else if (nm && nm.at < tr.end && nm.at - now < 3 * HOUR) t += ` In ungefähr ${sayDuration((nm.at - now) / MIN)} beginnt die Medienzeit.`;
   return t;
+}
+// Ansage beim Tablet-Symbol bzw. der Medienzeit-Karte
+function mediaSpeechText(){
+  const tr = state.trip, now = Date.now();
+  if (!tr) return '';
+  const am = activeIn(mediaOf(tr), now), nm = nextIn(mediaOf(tr), now);
+  if (am) return `Jetzt ist Medienzeit! Sie dauert noch ungefähr ${sayDuration((am.at + am.dur * MIN - now) / MIN)}.`;
+  if (nm) return `Bis zur Medienzeit dauert es noch ungefähr ${sayDuration((nm.at - now) / MIN)}. Die Medienzeit dauert dann ${sayDuration(nm.dur)}.`;
+  return 'Heute ist keine Medienzeit mehr geplant.';
 }
 // Keine feste Stimme setzen: iOS nimmt dann die eingebaute deutsche Standardstimme.
 // cancel() direkt vor speak() verschluckt auf iOS die Ansage, darum kurz warten.
-function speak(text){
+function speak(text, report){
   const ss = window.speechSynthesis; if (!ss) return;
   const go = () => {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'de-DE'; u.rate = 0.95; u.pitch = 1.1; u.volume = 1;
     let guard = null;
     const done = () => { fx.speaking = false; clearTimeout(guard); };
-    u.onend = done; u.onerror = done;
+    u.onstart = () => report && report('start');
+    u.onend = () => { done(); report && report('end'); };
+    u.onerror = e => { done(); report && report('error ' + (e.error || '')); };
     fx.speaking = true;
     guard = setTimeout(done, Math.max(6000, text.length * 110));
     ss.speak(u);
@@ -723,26 +732,31 @@ document.addEventListener('pointerdown', e => {
   speechSynthesis.speak(u);
 }, {once:true, capture:true});
 
-function onCarTap(){
-  const now = Date.now();
-  if (fx.speaking) return;
-  if (now < lockUntil){ fx.shakeUntil = now + 500; fx.bubble = 'zZz…'; fx.bubbleUntil = now + 1800; return; }
-  taps = taps.filter(t => now - t < 2 * MIN);
-  if (taps.length >= 2){
-    // Dritter Tipp kurz hintereinander: zwei Minuten Ruhe
-    lockUntil = now + 2 * MIN; taps = [];
-    fx.shakeUntil = now + 500; fx.bubble = 'zZz…'; fx.bubbleUntil = now + 1800;
-    return;
-  }
-  taps.push(now);
-  speak(speechText());
+// Je Knopf (Wohnmobil, Medienzeit) höchstens zwei Ansagen hintereinander, danach zwei Minuten Ruhe
+function makeLimiter(){
+  let taps = [], lockUntil = 0;
+  return () => {
+    const now = Date.now();
+    if (fx.speaking) return false;
+    const sleepy = () => { fx.shakeUntil = now + 500; fx.bubble = 'zZz…'; fx.bubbleUntil = now + 1800; return false; };
+    if (now < lockUntil) return sleepy();
+    taps = taps.filter(t => now - t < 2 * MIN);
+    if (taps.length >= 2){ lockUntil = now + 2 * MIN; taps = []; return sleepy(); }
+    taps.push(now);
+    return true;
+  };
 }
+const carLimit = makeLimiter(), mediaLimit = makeLimiter();
+function onCarTap(){ if (carLimit()) speak(speechText()); }
+function onMediaTap(){ if (state.trip && mediaLimit()) speak(mediaSpeechText()); }
 stage.addEventListener('pointerdown', e => {
   if (!carBox) return;
   const r = stage.getBoundingClientRect(), k = stage.width / r.width;
   const x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k, padX = carBox.w * 0.25, padY = carBox.h * 0.3;
-  if (x > carBox.x - padX && x < carBox.x + carBox.w + padX && y > carBox.y - padY && y < carBox.y + carBox.h + padY) onCarTap();
+  if (carBox.media.some(m => Math.hypot(x - m.x, y - m.y) < m.r * 1.8)) onMediaTap();
+  else if (x > carBox.x - padX && x < carBox.x + carBox.w + padX && y > carBox.y - padY && y < carBox.y + carBox.h + padY) onCarTap();
 });
+$('#mnext').addEventListener('click', onMediaTap);
 
 /* ---------------- Elternsperre ---------------- */
 const gear = $('#gear');
@@ -918,6 +932,7 @@ function secMore(){
     <div class="row"><span class="lbl">Form</span>${chip('ratio', 2, 'breit', device.ratio)}${chip('ratio', 3, 'breiter', device.ratio)}${chip('ratio', 4, 'ganz breit', device.ratio)}</div>
     <div class="row"><button class="btn" data-act="pip">⧉ Schwebendes Fenster starten</button><button class="btn ghost" data-act="testSpeak">🔊 Ansage testen</button></div>
     <div class="small">Das schwebende Fenster liegt über anderen Apps. Man kann es verschieben und mit zwei Fingern größer ziehen.</div>
+    <div class="small" id="speakDiag" style="margin-top:8px;font-weight:700"></div>
   </div>`;
 }
 function renderPanel(){
@@ -925,13 +940,13 @@ function renderPanel(){
   let h = `<div class="ph"><h2>Elternbereich</h2><button class="btn ghost" data-act="close">Fertig</button></div>`;
   if (!tr){
     const d = syncDraft();
-    h += secDest(true) + secNewTrip() + secPause(d) + secMedia(d) + secStops(d)
-      + `<div class="row"><button class="btn okb" data-act="startTrip">Los geht’s! 🚐</button></div>`;
+    h += secDest(true) + secNewTrip() + secPause(d) + secMedia(d) + secStops(d);
   }
   else h += (form.editDest ? secDest(false) : '') + secTrip(tr) + secPause(tr) + secMedia(tr) + secStops(tr);
   h += secSync() + secMore() + `<div class="sec"><h3>Zurücksetzen</h3>
     <div class="small">Löscht die Reise und alle Einstellungen auf diesem Gerät (auch die Handy-Verbindung). Die App startet danach wie frisch installiert.</div>
     <div class="row"><button class="btn warn" data-act="resetAll">Alles zurücksetzen</button></div></div>`;
+  if (!tr) h += `<div class="row" style="justify-content:center;margin:18px 0"><button class="btn okb" style="font-size:22px;padding:14px 28px" data-act="startTrip">Los geht’s! 🚐</button></div>`;
   const y = panelBox.scrollTop;
   panelBox.innerHTML = h;
   panelBox.scrollTop = y;
@@ -1074,7 +1089,20 @@ panelBox.addEventListener('click', e => {
       try{ ['wm-state', 'wm-device', 'wm-half'].forEach(k => localStorage.removeItem(k)); }catch(err){}
       location.reload(); return;
     case 'pip': togglePip(); return;
-    case 'testSpeak': speak(speechText()); return;
+    case 'testSpeak': {
+      // Ansage testen mit Rückmeldung, woran es liegt, wenn nichts zu hören ist
+      const el = panelBox.querySelector('#speakDiag');
+      if (!window.speechSynthesis){ el.textContent = 'Dieses Gerät kann im Browser leider nicht vorlesen.'; return; }
+      const n = speechSynthesis.getVoices().filter(v => /^de/i.test(v.lang)).length;
+      let started = false;
+      el.textContent = `Deutsche Stimmen: ${n} · Ansage wird gestartet …`;
+      speak('Hallo! Das ist ein Test. Könnt ihr mich hören?', ev => {
+        if (ev === 'start'){ started = true; el.textContent = `Deutsche Stimmen: ${n} · Die Ansage läuft. Hörst du nichts, liegt es an Lautstärke oder Stummschaltung des iPads.`; }
+        else if (ev.startsWith('error')) el.textContent = `Deutsche Stimmen: ${n} · Fehler beim Vorlesen (${ev.slice(6) || 'unbekannt'}).`;
+      });
+      setTimeout(() => { if (!started && el.isConnected) el.textContent = `Deutsche Stimmen: ${n} · Die Ansage ist nicht gestartet. Bitte unter Einstellungen → Bedienungshilfen → Gesprochene Inhalte → Stimmen eine deutsche Stimme laden.`; }, 3000);
+      return;
+    }
   }
   renderPanel();
 });
